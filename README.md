@@ -1,4 +1,4 @@
-# 📦 Project 5: End-to-End DevSecOps Transformation (🚧 In Progress)
+# 📦 Project 5: End-to-End DevSecOps Transformation
 
 ## 1. Overview 🚀
 This project simulates a **complete DevSecOps transformation** for a fictional company following a simulated security breach. It brings together all key areas of DevSecOps — infrastructure, application, CI/CD, security scanning, and incident response — in a unified workflow.
