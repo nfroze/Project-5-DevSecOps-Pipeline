@@ -60,6 +60,10 @@ The app is intentionally simple to reflect a **realistic solo project** by a Dev
 ---
 
 ## 7. Conclusion ✅
-This project represents the final piece in a broader DevSecOps portfolio. It ties together CI/CD security, container hardening, infrastructure-as-code, and real-world vulnerability testing to simulate a scalable, automated, and secure SDLC. 
+This project represents the final piece in a broader DevSecOps portfolio. It ties together CI/CD security, container hardening, infrastructure-as-code, and real-world vulnerability testing to simulate a scalable, automated, and secure SDLC.
+
+---
+
+🔗 [Back to my GitHub Profile](https://github.com/nfroze) 
 
 > 📌 While the app is minimal by design, the security architecture reflects real-world best practices across modern cloud-native deployments.
