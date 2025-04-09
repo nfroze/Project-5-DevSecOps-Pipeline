@@ -58,8 +58,6 @@ The app is simple by design, allowing the spotlight to remain on **infrastructur
 | Alert forwarding           | **Slack** (via webhook or SNS)      |
 | SIEM/log correlation       | **Splunk Free (self-hosted)**       |
 
-> ⚠️ *Note:* In production, logs are typically shipped using Fluent Bit or CloudWatch Log forwarding. This project focuses on runtime alerting and security visibility. Log shipping is discussed as an optional enhancement in the README.
-
 ---
 
 ## 6. Security Highlights 🔒
