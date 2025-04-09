@@ -74,7 +74,7 @@ The app is simple by design, allowing the spotlight to remain on **infrastructur
 
 ## 7. Value for Organizations 💼
 - Demonstrates **production-relevant DevSecOps practices**
-- Showcases how to secure a full SDLC on AWS
+- Showcases how to secure a full SDLC on AWS - same principles can be applied to any other cloud provider
 - Highlights key DevSecOps principles: automation, visibility, runtime detection, IaC security
 - Can be adapted for more complex real-world applications
 
