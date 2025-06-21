@@ -1,0 +1,1 @@
+# No inputs needed for this IAM module at the moment
