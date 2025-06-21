@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
   type        = string
-  default     = "10.0.0.0/16"
+  default     = "10.0.0.0/16"  # Keep same unless you want to change
 }
 
 variable "azs" {
