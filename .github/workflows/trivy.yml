@@ -1,4 +1,4 @@
-name: CI - Build and Scan
+name: Trivy - Container Image & SCA Scan
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: Secrets Scan with Gitleaks
+name: Gitleaks - Secrets Detection
 
 on:
   push:

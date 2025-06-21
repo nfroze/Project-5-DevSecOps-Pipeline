@@ -1,4 +1,4 @@
-name: SAST with Semgrep
+name: Semgrep - Static Application Security Testing (SAST)
 
 on:
   push:
