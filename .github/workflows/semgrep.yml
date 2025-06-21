@@ -22,9 +22,8 @@ jobs:
       - name: Run Semgrep Scan
         uses: returntocorp/semgrep-action@v1
         with:
-          config: "p/ci"  # Use production-ready security ruleset
-          generateSarif: true
-          uploadSarif: false
+          config: "p/ci"  # Production-ready security rules
+          sarif: semgrep.sarif  # This replaces generateSarif + uploadSarif
 
       - name: Upload SARIF to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3
