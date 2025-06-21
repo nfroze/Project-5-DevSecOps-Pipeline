@@ -1,0 +1,56 @@
+name: CI - Build and Scan
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          skip-dirs: '.github'
+          format: 'table'
+
+      - name: Build Docker image
+        run: |
+          docker build -t devsecops-app:latest .
+
+      - name: Trivy Image Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: devsecops-app:latest
+          format: 'sarif'
+          output: trivy-image-results.sarif
+
+      - name: Trivy SCA (Source Code Analysis)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          format: 'sarif'
+          output: trivy-sca-results.sarif
+
+      - name: Upload SARIF results - Image
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-image-results.sarif
+
+      - name: Upload SARIF results - SCA
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-sca-results.sarif
