@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  security-events: write
 
 jobs:
   build-and-scan:
@@ -39,11 +40,11 @@ jobs:
           output: trivy-sca-results.sarif
 
       - name: Upload SARIF results - Image
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-image-results.sarif
 
       - name: Upload SARIF results - SCA
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-sca-results.sarif
