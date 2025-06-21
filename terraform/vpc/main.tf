@@ -25,5 +25,6 @@ resource "aws_subnet" "public" {
 
   tags = {
     Name = "project5-public-subnet-${count.index}"
+    "kubernetes.io/cluster/project5-eks-cluster" = "owned"
   }
 }
