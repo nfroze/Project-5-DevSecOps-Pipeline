@@ -1,4 +1,4 @@
-name: Trivy - Container Image & SCA Scan
+name: Trivy - SCA + Image Scan
 
 on:
   push:

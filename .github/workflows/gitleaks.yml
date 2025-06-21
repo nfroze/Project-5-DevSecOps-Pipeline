@@ -1,5 +1,4 @@
-name: Gitleaks - Secrets Detection
-
+name: Gitleaks - Hardcoded Secrets Scan
 on:
   push:
     branches: [ "main" ]
