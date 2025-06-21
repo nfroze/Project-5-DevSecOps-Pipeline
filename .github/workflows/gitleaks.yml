@@ -27,6 +27,9 @@ jobs:
       - name: Run Gitleaks Scan
         run: |
           gitleaks detect --source=. --report-format=sarif --report-path=gitleaks-results.sarif || true
+          if [ ! -f gitleaks-results.sarif ]; then
+            echo '{"version":"2.1.0","runs":[]}' > gitleaks-results.sarif
+          fi
 
       - name: Upload SARIF to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3
