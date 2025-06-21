@@ -4,5 +4,10 @@ provider "aws" {
 
 resource "aws_s3_bucket" "example" {
   bucket = "my-insecure-devsecops-bucket"
-  acl    = "public-read"  # ❌ This will trigger a Checkov finding
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_acl" "example_acl" {
+  bucket = aws_s3_bucket.example.id
+  acl    = "public-read"  # ❌ This is insecure — Checkov will flag it
 }
