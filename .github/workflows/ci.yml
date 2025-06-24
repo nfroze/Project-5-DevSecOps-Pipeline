@@ -31,7 +31,7 @@ jobs:
 
       - name: Run Semgrep (SAST)
         run: |
-          curl -sL https://semgrep.dev/install.sh | sh
+          curl -sL https://semgrep.dev/install.sh | bash
           ./semgrep --config=auto --json --output=semgrep-report.json || true
 
       - name: Upload Semgrep Report
