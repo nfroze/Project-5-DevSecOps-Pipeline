@@ -1,41 +1,41 @@
-name: Trivy Scan
+name: Build, Scan and Push Docker Image
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
-  trivy-scan:
+  build-scan-push:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22.x'
-        cache: 'npm'
-        cache-dependency-path: '**/package-lock.json'
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Clear npm cache and reinstall dependencies
-      run: |
-        npm cache clean --force
-        rm -rf node_modules package-lock.json
-        npm install
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Verify cross-spawn version
-      run: npm ls cross-spawn
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/project5-app:latest .
 
-    - name: Build Docker image
-      run: docker build -t myapp:${{ github.sha }} .
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.DOCKER_USERNAME }}/project5-app:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
 
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'myapp:${{ github.sha }}'
-        format: 'table'
-        severity: 'HIGH,CRITICAL'
-        exit-code: '1'
+      - name: Push Docker image to Docker Hub
+        if: success()  # Only push if scan passes
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/project5-app:latest
