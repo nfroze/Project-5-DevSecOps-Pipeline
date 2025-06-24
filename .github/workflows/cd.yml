@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      EXTERNAL_IP: ""  # Prevents VS Code warning for undefined env var
 
     steps:
       - name: Checkout Repository
