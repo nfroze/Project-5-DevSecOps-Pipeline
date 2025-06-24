@@ -2,71 +2,66 @@ name: CI Pipeline
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/ci.yml'
-      - '**.js'
-      - 'Dockerfile'
-      - 'package.json'
-      - 'package-lock.json'
+    branches: [main]
   pull_request:
-    paths:
-      - '**.js'
-      - 'Dockerfile'
-      - 'package.json'
-      - 'package-lock.json'
+    branches: [main]
 
 jobs:
-  ci-security:
+  ci:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Install Semgrep
-        run: pip install semgrep
-
-      - name: Run Semgrep SAST scan
-        run: semgrep --config=auto --json --output=semgrep-report.json || true
-
+      # ---------- Trivy ----------
       - name: Install Trivy
         run: |
           sudo apt-get update
           sudo apt-get install -y wget
-          wget -qO- https://aquasecurity.github.io/trivy-repo/deb/setup.sh | sudo bash
+          wget -qO- https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb stable main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
           sudo apt-get install -y trivy
 
-      - name: Run Trivy on filesystem
-        run: trivy fs . --format json --output trivy-report.json || true
+      - name: Run Trivy Scan (Filesystem)
+        run: trivy fs . --format json --output trivy-report.json
 
-      - name: Run Gitleaks for secrets detection
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          args: detect --report-format json --report-path gitleaks-report.json || true
-
-      - name: Upload Semgrep report
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-report
-          path: semgrep-report.json
-
-      - name: Upload Trivy report
+      - name: Upload Trivy Report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report
           path: trivy-report.json
 
-      - name: Upload Gitleaks report
+      # ---------- Semgrep ----------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep Scan
+        run: semgrep --config=auto --json --output=semgrep-report.json
+
+      - name: Upload Semgrep Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: semgrep-report.json
+
+      # ---------- Gitleaks ----------
+      - name: Install Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+
+      - name: Run Gitleaks
+        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json
+
+      - name: Upload Gitleaks Report
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-report
