@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: your-dockerhub-username/your-image-name:latest
+          image: nfroze/project5-app:latest
           ports:
             - containerPort: 3000
           env:
