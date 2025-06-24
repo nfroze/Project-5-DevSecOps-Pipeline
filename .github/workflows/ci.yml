@@ -65,3 +65,4 @@ jobs:
     - name: 🚀 Push Docker image
       if: success()
       run: docker push $IMAGE_NAME
+      
