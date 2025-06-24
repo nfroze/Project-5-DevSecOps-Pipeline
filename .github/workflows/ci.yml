@@ -34,7 +34,7 @@ jobs:
         gitleaks detect --source=. --report-format=json --report-path=gitleaks-report.json
 
     - name: Upload scan reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: scan-reports
         path: |
