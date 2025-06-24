@@ -1,4 +1,4 @@
-name: Checkov - IaC Security Scan
+name: Secure IaC
 
 on:
   push:
