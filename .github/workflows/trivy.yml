@@ -1,30 +1,27 @@
-name: Docker Build, Trivy Scan, and Push
+name: Docker Build, Scan, and Push
 
 on:
   push:
     branches: [main]
 
 jobs:
-  trivy-docker-scan:
+  docker-security-pipeline:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Log in to Docker Hub
+      - name: Docker Hub Login
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Remove old Docker images to avoid cache issues
-        run: docker image prune -af
-
-      - name: Build Docker image (no cache)
+      - name: Build image (no cache)
         run: docker build --no-cache -t ${{ secrets.DOCKER_USERNAME }}/project5-app .
 
-      - name: Scan Docker image with Trivy
+      - name: Trivy scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ secrets.DOCKER_USERNAME }}/project5-app'
@@ -32,5 +29,6 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
 
-      - name: Push to Docker Hub (only if scan passed)
+      - name: Push to Docker Hub
+        if: success()
         run: docker push ${{ secrets.DOCKER_USERNAME }}/project5-app
