@@ -1,11 +1,11 @@
-name: CD - Deploy to EKS
+name: CD Pipeline
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  deploy:
+  cd-pipeline:
     runs-on: ubuntu-latest
 
     steps:
