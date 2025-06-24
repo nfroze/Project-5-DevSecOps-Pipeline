@@ -21,6 +21,10 @@ jobs:
     - name: Install dependencies
       run: npm install
 
+    - name: Install Semgrep
+      run: |
+        pip install semgrep
+
     - name: Run Semgrep (SAST)
       run: |
         semgrep --config=auto --json --output=semgrep-report.json
