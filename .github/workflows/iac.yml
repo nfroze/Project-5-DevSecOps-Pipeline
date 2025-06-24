@@ -14,7 +14,6 @@ permissions:
 
 jobs:
   iac-pipeline:
-    name: Run Checkov Scan
     runs-on: ubuntu-latest
 
     steps:
