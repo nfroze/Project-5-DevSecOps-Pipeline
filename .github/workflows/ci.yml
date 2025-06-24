@@ -17,6 +17,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Trivy (using script - Ubuntu 24.04 safe)
+        run: |
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.tar.gz
+          tar -xzf trivy_0.50.1_Linux-64bit.tar.gz
+          sudo mv trivy /usr/local/bin/
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
