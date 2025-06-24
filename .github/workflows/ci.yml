@@ -1,4 +1,4 @@
-name: Secure CI Pipeline
+name: CI Pipeline
 
 on:
   push:
@@ -10,7 +10,7 @@ env:
   IMAGE_NAME: nfroze/project5-app:latest
 
 jobs:
-  ci-secure-pipeline:
+  ci-pipeline:
     runs-on: ubuntu-latest
 
     steps:
@@ -65,4 +65,3 @@ jobs:
     - name: 🚀 Push Docker image
       if: success()
       run: docker push $IMAGE_NAME
-      

@@ -1,4 +1,4 @@
-name: Secure IaC
+name: IaC Pipeline
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
   security-events: write
 
 jobs:
-  checkov:
+  iac-pipeline:
     name: Run Checkov Scan
     runs-on: ubuntu-latest
 
