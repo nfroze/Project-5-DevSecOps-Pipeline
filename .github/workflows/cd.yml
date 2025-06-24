@@ -45,16 +45,16 @@ jobs:
 
       - name: Run OWASP ZAP Baseline DAST Scan
         run: |
-          mkdir -p zap-output
-          docker pull ghcr.io/zaproxy/zaproxy
-          docker run --user root -v $(pwd)/zap-output:/zap/wrk/:rw \
+          mkdir -p zap-results
+          docker run --user root -v $(pwd)/zap-results:/zap/wrk/:rw \
             ghcr.io/zaproxy/zaproxy zap-baseline.py \
             -t http://${{ env.EXTERNAL_IP }} \
-            -J /zap/wrk/zap-report.json \
-            -w /zap/wrk/zap-output.md || true
+            -r report_html.html \
+            -J report_json.json \
+            -w report_md.md || true
 
       - name: Upload ZAP DAST Reports
         uses: actions/upload-artifact@v4
         with:
           name: zap-dast-reports
-          path: zap-output
+          path: zap-results
