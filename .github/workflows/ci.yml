@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   pull_request:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -22,20 +26,16 @@ jobs:
       run: npm install
 
     - name: Install Semgrep
-      run: |
-        pip install semgrep
+      run: pip install semgrep
 
     - name: Run Semgrep (SAST)
-      run: |
-        semgrep --config=auto --json --output=semgrep-report.json
+      run: semgrep --config=auto --json --output=semgrep-report.json
 
     - name: Run Trivy (SCA + image scan)
-      run: |
-        trivy fs . --format json --output trivy-report.json
+      run: trivy fs . --format json --output trivy-report.json
 
     - name: Run Gitleaks (Secrets detection)
-      run: |
-        gitleaks detect --source=. --report-format=json --report-path=gitleaks-report.json
+      run: gitleaks detect --source=. --report-format=json --report-path=gitleaks-report.json
 
     - name: Upload scan reports
       uses: actions/upload-artifact@v4
