@@ -5,7 +5,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build-scan-push:
+  trivy:
     runs-on: ubuntu-latest
 
     steps:
