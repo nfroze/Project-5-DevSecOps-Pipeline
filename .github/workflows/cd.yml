@@ -8,8 +8,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      EXTERNAL_IP: ""  # Prevents VS Code warning for undefined env var
 
     steps:
       - name: Checkout Repository
@@ -48,13 +46,21 @@ jobs:
       - name: Run OWASP ZAP Baseline DAST Scan
         run: |
           docker pull ghcr.io/zaproxy/zaproxy
-          docker run -v $(pwd):/zap/wrk/:rw \
+          docker run --rm \
+            --user $(id -u):$(id -g) \
+            -v $(pwd):/zap/wrk/:rw \
             ghcr.io/zaproxy/zaproxy zap-baseline.py \
             -t http://${{ env.EXTERNAL_IP }} \
-            -r zap-report.html || true
+            -r zap-report.html \
+            -w zap-output.md \
+            -J zap-report.json || true
 
-      - name: Upload ZAP DAST Report
+      - name: Upload ZAP DAST Reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zap-dast-report
-          path: zap-report.html
+          name: zap-dast-reports
+          path: |
+            zap-report.html
+            zap-output.md
+            zap-report.json
