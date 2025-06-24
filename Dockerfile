@@ -1,18 +1,15 @@
-FROM node:22.3.0-alpine3.20
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy dependency files
+# Copy only necessary files to install dependencies
 COPY package.json package-lock.json ./
 
-# Install dependencies
 RUN npm install
 
-# Copy the rest of the app
+# Copy application code
 COPY . .
 
-# Expose port
 EXPOSE 3000
 
-# Start the app
 CMD ["node", "index.js"]
