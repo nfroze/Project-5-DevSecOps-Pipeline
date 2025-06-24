@@ -7,6 +7,7 @@ on:
 jobs:
   trivy-docker-scan:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -17,9 +18,11 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Remove old Docker images to avoid cache issues
+        run: docker image prune -af
+
       - name: Build Docker image (no cache)
-        run: |
-          docker build --no-cache -t ${{ secrets.DOCKER_USERNAME }}/project5-app .
+        run: docker build --no-cache -t ${{ secrets.DOCKER_USERNAME }}/project5-app .
 
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@master
@@ -30,5 +33,4 @@ jobs:
           ignore-unfixed: true
 
       - name: Push to Docker Hub (only if scan passed)
-        run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/project5-app
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/project5-app
