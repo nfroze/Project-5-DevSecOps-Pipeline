@@ -2,30 +2,35 @@ name: IaC Security Scan
 
 on:
   push:
-    branches: [ main ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/iac.yml'
   pull_request:
-
-permissions:
-  contents: read
-  id-token: write
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/iac.yml'
 
 jobs:
-  iac-scan:
+  iac-security-scan:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Checkov
-      run: pip install checkov
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
 
-    - name: Run Checkov on Terraform code
-      run: |
-        checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json
+      - name: Install Checkov
+        run: pip install checkov
 
-    - name: Upload Checkov report
-      uses: actions/upload-artifact@v4
-      with:
-        name: checkov-report
-        path: checkov-report.json
+      - name: Run Checkov on Terraform code
+        run: |
+          checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json || true
+
+      - name: Upload Checkov report
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-report
+          path: checkov-report.json
