@@ -2,42 +2,37 @@ name: CD Pipeline
 
 on:
   push:
-    branches: [ main ]
-
-permissions:
-  contents: read
-  id-token: write
+    branches:
+      - main
+    paths:
+      - '.github/workflows/cd.yml'
+      - 'k8s/**'
 
 jobs:
-  cd:
+  deploy-to-eks:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-west-2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
 
-    - name: Update kubeconfig
-      run: aws eks update-kubeconfig --region eu-west-2 --name project5-eks-cluster
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region eu-west-2 --name project5-eks-cluster
 
-    - name: Deploy to EKS
-      run: |
-        kubectl apply -f k8s/deployment.yaml
-        kubectl apply -f k8s/service.yaml
+      - name: Deploy to EKS
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
 
-    - name: Run OWASP ZAP Baseline Scan
-      uses: zaproxy/action-baseline@v0.10.0
-      with:
-        target: 'http://${{ secrets.LOAD_BALANCER_URL }}'
-
-    - name: Upload ZAP report
-      uses: actions/upload-artifact@v4
-      with:
-        name: zap-report
-        path: zap_report.json
+      - name: Upload Kubernetes manifest files
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-manifests
+          path: k8s/

@@ -11,23 +11,18 @@ on:
       - '.github/workflows/iac.yml'
 
 jobs:
-  iac-security-scan:
+  iac-security:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-
       - name: Install Checkov
         run: pip install checkov
 
-      - name: Run Checkov on Terraform code
-        run: |
-          checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json || true
+      - name: Run Checkov scan
+        run: checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json || true
 
       - name: Upload Checkov report
         uses: actions/upload-artifact@v4
