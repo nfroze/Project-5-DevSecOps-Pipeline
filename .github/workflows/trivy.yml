@@ -1,52 +1,34 @@
-name: Trivy - SCA + Image Scan
+name: Docker Build, Trivy Scan, and Push
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
-  security-events: write
+    branches: [main]
 
 jobs:
-  build-and-scan:
+  trivy-docker-scan:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker image
         run: |
-          docker build -t devsecops-app:latest .
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/project5-app .
 
-      - name: Trivy Image Scan
+      - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: devsecops-app:latest
-          format: 'sarif'
-          output: trivy-image-results.sarif
+          image-ref: '${{ secrets.DOCKER_USERNAME }}/project5-app'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
 
-      - name: Trivy SCA (Source Code Analysis)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          format: 'sarif'
-          output: trivy-sca-results.sarif
-
-      - name: Upload SARIF results - Image
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-image-results.sarif
-          category: trivy-image
-
-      - name: Upload SARIF results - SCA
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-sca-results.sarif
-          category: trivy-sca
+      - name: Push to Docker Hub (only if scan passed)
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/project5-app
