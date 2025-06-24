@@ -4,19 +4,16 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '.github/workflows/cd.yml'
-      - 'k8s/**'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -27,16 +24,34 @@ jobs:
         run: aws eks update-kubeconfig --region eu-west-2 --name project5-eks-cluster
 
       - name: Deploy to EKS
-        run: kubectl apply -f k8s/
-        
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+
+      - name: Wait for LoadBalancer External IP
+        id: wait_lb
+        run: |
+          for i in {1..30}; do
+            EXTERNAL_IP=$(kubectl get svc devsecops-service -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            if [[ -n "$EXTERNAL_IP" ]]; then
+              echo "External IP acquired: $EXTERNAL_IP"
+              echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
+              break
+            else
+              echo "Waiting for LoadBalancer IP..."
+              sleep 10
+            fi
+          done
+
       - name: Run OWASP ZAP Baseline DAST Scan
         run: |
-          docker pull owasp/zap2docker-stable
-          docker run -v $(pwd):/zap/wrk/:rw -t owasp/zap2docker-stable zap-baseline.py \
-            -t http://${{ secrets.LOAD_BALANCER_URL }} \
+          docker pull ghcr.io/zaproxy/zaproxy
+          docker run -v $(pwd):/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy zap-baseline.py \
+            -t http://${{ env.EXTERNAL_IP }} \
             -r zap-report.html || true
 
-      - name: Upload ZAP report
+      - name: Upload ZAP DAST Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-dast-report

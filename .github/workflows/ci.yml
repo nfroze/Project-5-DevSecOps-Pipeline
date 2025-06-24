@@ -2,67 +2,45 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [ "main" ]
   pull_request:
-    branches: [main]
+    branches: [ "main" ]
+
+permissions:
+  contents: read
 
 jobs:
-  ci:
+  ci-security-checks:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ---------- Trivy ----------
-      - name: Install Trivy
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget
-          wget -qO- https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb stable main" | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install -y trivy
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Run Trivy Scan (Filesystem)
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Trivy file system scan
         run: trivy fs . --format json --output trivy-report.json
 
-      - name: Upload Trivy Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-report
-          path: trivy-report.json
-
-      # ---------- Semgrep ----------
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-
-      - name: Install Semgrep
-        run: pip install semgrep
-
-      - name: Run Semgrep Scan
+      - name: Run Semgrep SAST scan
         run: semgrep --config=auto --json --output=semgrep-report.json
 
-      - name: Upload Semgrep Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-report
-          path: semgrep-report.json
-
-      # ---------- Gitleaks ----------
-      - name: Install Gitleaks
+      - name: Run Gitleaks secret scan
         uses: gitleaks/gitleaks-action@v2
+        with:
+          args: "--report-path=gitleaks-report.json --report-format=json"
 
-      - name: Run Gitleaks
-        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json
-
-      - name: Upload Gitleaks Report
+      - name: Upload scan reports to GitHub Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: gitleaks-report
-          path: gitleaks-report.json
+          name: ci-scan-reports
+          path: |
+            trivy-report.json
+            semgrep-report.json
+            gitleaks-report.json
