@@ -34,8 +34,8 @@ jobs:
           for i in {1..30}; do
             EXTERNAL_IP=$(kubectl get svc devsecops-service -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}')
             if [[ -n "$EXTERNAL_IP" ]]; then
-              echo "External IP acquired: $EXTERNAL_IP"
               echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
+              echo "External IP acquired: $EXTERNAL_IP"
               break
             else
               echo "Waiting for LoadBalancer IP..."
@@ -47,22 +47,14 @@ jobs:
         run: |
           mkdir -p zap-output
           docker pull ghcr.io/zaproxy/zaproxy
-          docker run --rm \
-            --user $(id -u):$(id -g) \
-            -v $(pwd)/zap-output:/zap/wrk/:rw \
-            --workdir /zap/wrk \
+          docker run --user root -v $(pwd)/zap-output:/zap/wrk/:rw \
             ghcr.io/zaproxy/zaproxy zap-baseline.py \
             -t http://${{ env.EXTERNAL_IP }} \
-            -r zap-report.html \
-            -w zap-output.md \
-            -J zap-report.json || true
+            -J /zap/wrk/zap-report.json \
+            -w /zap/wrk/zap-output.md || true
 
       - name: Upload ZAP DAST Reports
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-dast-reports
-          path: |
-            zap-output/zap-report.html
-            zap-output/zap-output.md
-            zap-output/zap-report.json
+          path: zap-output
