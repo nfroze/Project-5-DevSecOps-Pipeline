@@ -2,12 +2,14 @@ name: CI Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  build-and-scan:
+  ci-security:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,12 +18,12 @@ jobs:
 
       - name: Install Trivy
         run: |
-          wget https://github.com/aquasecurity/trivy/releases/download/v0.63.0/trivy_0.63.0_Linux-64bit.tar.gz
-          tar zxvf trivy_0.63.0_Linux-64bit.tar.gz
+          wget https://github.com/aquasecurity/trivy/releases/download/v0.45.1/trivy_0.45.1_Linux-64bit.tar.gz
+          tar zxvf trivy_0.45.1_Linux-64bit.tar.gz
           sudo mv trivy /usr/local/bin/
 
-      - name: Run Trivy SCA (File System) Scan
-        run: trivy fs . --format json --output trivy-report.json || true
+      - name: Run Trivy SCA Scan
+        run: trivy fs . --format json --output trivy-report.json
 
       - name: Upload Trivy Report
         uses: actions/upload-artifact@v4
@@ -29,10 +31,11 @@ jobs:
           name: trivy-report
           path: trivy-report.json
 
-      - name: Run Semgrep (SAST)
-        run: |
-          curl -sL https://semgrep.dev/install.sh | bash
-          ./semgrep --config=auto --json --output=semgrep-report.json || true
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep SAST Scan
+        run: semgrep --config=auto --json --output=semgrep-report.json
 
       - name: Upload Semgrep Report
         uses: actions/upload-artifact@v4
@@ -40,10 +43,10 @@ jobs:
           name: semgrep-report
           path: semgrep-report.json
 
-      - name: Gitleaks Secret Scan
-        uses: zricethezav/gitleaks-action@v2
+      - name: Run Gitleaks Secrets Scan
+        uses: gitleaks/gitleaks-action@v2
         with:
-          args: "--report-format json --report-path gitleaks-report.json || true"
+          args: detect --report-format json --report-path gitleaks-report.json
 
       - name: Upload Gitleaks Report
         uses: actions/upload-artifact@v4
