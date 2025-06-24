@@ -45,10 +45,12 @@ jobs:
 
       - name: Run OWASP ZAP Baseline DAST Scan
         run: |
+          mkdir -p zap-output
           docker pull ghcr.io/zaproxy/zaproxy
           docker run --rm \
             --user $(id -u):$(id -g) \
-            -v $(pwd):/zap/wrk/:rw \
+            -v $(pwd)/zap-output:/zap/wrk/:rw \
+            --workdir /zap/wrk \
             ghcr.io/zaproxy/zaproxy zap-baseline.py \
             -t http://${{ env.EXTERNAL_IP }} \
             -r zap-report.html \
@@ -61,6 +63,6 @@ jobs:
         with:
           name: zap-dast-reports
           path: |
-            zap-report.html
-            zap-output.md
-            zap-report.json
+            zap-output/zap-report.html
+            zap-output/zap-output.md
+            zap-output/zap-report.json
