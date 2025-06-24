@@ -9,7 +9,7 @@ on:
       - 'k8s/**'
 
 jobs:
-  deploy-to-eks:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,12 +27,17 @@ jobs:
         run: aws eks update-kubeconfig --region eu-west-2 --name project5-eks-cluster
 
       - name: Deploy to EKS
+        run: kubectl apply -f k8s/
+        
+      - name: Run OWASP ZAP Baseline DAST Scan
         run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
+          docker pull owasp/zap2docker-stable
+          docker run -v $(pwd):/zap/wrk/:rw -t owasp/zap2docker-stable zap-baseline.py \
+            -t http://${{ secrets.LOAD_BALANCER_URL }} \
+            -r zap-report.html || true
 
-      - name: Upload Kubernetes manifest files
+      - name: Upload ZAP report
         uses: actions/upload-artifact@v4
         with:
-          name: k8s-manifests
-          path: k8s/
+          name: zap-dast-report
+          path: zap-report.html
