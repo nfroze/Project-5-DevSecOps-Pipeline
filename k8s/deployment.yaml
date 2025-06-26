@@ -1,24 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: devsecops-app
+  name: project5-deployment
   labels:
-    app: devsecops-app
+    app: project5-app
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: devsecops-app
+      app: project5-app
   template:
     metadata:
       labels:
-        app: devsecops-app
+        app: project5-app
     spec:
       containers:
-        - name: app
+        - name: project5-app
+          # checkov:skip=CKV_K8S_43: Using :latest tag for automated CI/CD updates
           image: nfroze/project5-app:latest
           ports:
             - containerPort: 3000
-          env:
-            - name: PORT
-              value: "3000"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
