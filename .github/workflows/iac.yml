@@ -18,8 +18,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Checkov
-        run: pip install checkov
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq uuid-runtime
+          pip install checkov
 
       - name: Run Checkov scan and save JSON report
         run: |
@@ -30,9 +33,6 @@ jobs:
         with:
           name: checkov-report
           path: checkov-report.json
-
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq uuid-runtime
 
       - name: Parse Checkov summary and send to Splunk
         run: |

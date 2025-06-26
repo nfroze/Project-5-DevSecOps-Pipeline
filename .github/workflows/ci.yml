@@ -21,9 +21,13 @@ jobs:
 
       - name: Install Trivy and uuid-runtime
         run: |
-          sudo apt-get update && sudo apt-get install -y wget uuid-runtime
+          sudo apt-get update && sudo apt-get install -y wget uuid-runtime jq
           wget https://github.com/aquasecurity/trivy/releases/download/v0.63.0/trivy_0.63.0_Linux-64bit.deb
           sudo dpkg -i trivy_0.63.0_Linux-64bit.deb
+
+      - name: Install Gitleaks
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/zricethezav/gitleaks/main/install.sh | bash
 
       - name: 📦 Install dependencies
         run: npm ci
