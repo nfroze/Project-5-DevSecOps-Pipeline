@@ -6,7 +6,7 @@ spec:
   containers:
     - name: alpine
       image: alpine
-      command: [ "sh", "-c", "apk add --no-cache bash; bash -c 'echo test > /etc/passwd'" ]
+      command: [ "sh", "-c", "sleep 3600" ]  # keep pod running for 1 hour
       securityContext:
         privileged: true
   restartPolicy: Never
