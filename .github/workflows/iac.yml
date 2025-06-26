@@ -18,11 +18,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq uuid-runtime
-          pip install checkov
+      - name: Install Checkov
+        run: pip install checkov
 
       - name: Run Checkov scan and save JSON report
         run: |
@@ -34,8 +31,10 @@ jobs:
           name: checkov-report
           path: checkov-report.json
 
-      - name: Parse Checkov summary and send to Splunk
+      - name: Install jq and uuid-runtime, parse summary, send to Splunk
         run: |
+          sudo apt-get update
+          sudo apt-get install -y jq uuid-runtime
           FAIL_COUNT=$(jq '.results.failed_checks | length' checkov-report.json)
           PASS_COUNT=$(jq '.results.passed_checks | length' checkov-report.json)
           SKIP_COUNT=$(jq '.results.skipped_checks | length' checkov-report.json)

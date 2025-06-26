@@ -29,6 +29,9 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/zricethezav/gitleaks/main/install.sh | bash
 
+      - name: Add Gitleaks to PATH
+        run: echo "$HOME/.gitleaks/bin" >> $GITHUB_PATH
+
       - name: 📦 Install dependencies
         run: npm ci
 
