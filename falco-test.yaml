@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: falco-test
+spec:
+  containers:
+    - name: alpine
+      image: alpine
+      command: [ "sh", "-c", "touch /etc/shadow; sleep 1" ]
+      securityContext:
+        privileged: true
+  restartPolicy: Never
