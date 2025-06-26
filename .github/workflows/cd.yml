@@ -40,7 +40,7 @@ jobs:
             sleep 10
           done
 
-      - name: Run OWASP ZAP Baseline DAST Scan
+      - name: Run OWASP ZAP Baseline DAST Scan and save report
         run: |
           mkdir -p zap-results
           docker run --user root -v $(pwd)/zap-results:/zap/wrk/:rw \
@@ -55,7 +55,20 @@ jobs:
           name: zap-dast-reports
           path: ./zap-results
 
-      - name: 📡 Send CD result to Splunk
+      - name: Send ZAP DAST JSON report to Splunk
+        run: |
+          if [ -f zap-results/zap-report.json ]; then
+            CHANNEL_ID=$(uuidgen)
+            curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
+              -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+              -d @zap-results/zap-report.json
+          else
+            echo "ZAP report JSON not found, skipping Splunk upload."
+          fi
+
+      - name: 📡 Send CD final result to Splunk
         run: |
           CHANNEL_ID=$(uuidgen)
           curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \

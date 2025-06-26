@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '16'
 
-      - name: Install Trivy
+      - name: Install Trivy and uuid-runtime
         run: |
           sudo apt-get update && sudo apt-get install -y wget uuid-runtime
           wget https://github.com/aquasecurity/trivy/releases/download/v0.63.0/trivy_0.63.0_Linux-64bit.deb
@@ -28,14 +28,30 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci
 
-      - name: 🧠 Run Semgrep (SAST)
+      - name: 🧠 Run Semgrep (SAST) and save results
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/src" \
             returntocorp/semgrep-agent \
-            semgrep --config "p/default"
+            semgrep --config "p/default" --json > semgrep-results.json
 
-      - name: 🕵️‍♂️ Run Gitleaks (Secrets Scan)
+      - name: Upload Semgrep SAST results
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
+
+      - name: Send Semgrep SAST results to Splunk
+        run: |
+          RESULTS=$(cat semgrep-results.json | jq -c '.')
+          CHANNEL_ID=$(uuidgen)
+          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
+            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+            -d "{\"event\": $RESULTS}"
+
+      - name: 🕵️‍♂️ Run Gitleaks (Secrets Scan) summary only
         uses: gitleaks/gitleaks-action@v2
         with:
           args: "--source=. --report-path=gitleaks-report.json --report-format=json"
@@ -44,9 +60,26 @@ jobs:
         run: |
           trivy fs . --format json --output trivy-fs-results.json
 
-      - name: 🐳 Build Docker image
+      - name: 🐳 Build Docker image and capture logs
+        id: docker_build
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:${{ github.sha }} .
+          set -o pipefail
+          if docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:${{ github.sha }} . 2>&1 | tee build.log; then
+            echo "BUILD_STATUS=success" >> $GITHUB_OUTPUT
+          else
+            echo "BUILD_STATUS=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Send Docker build status to Splunk
+        run: |
+          CHANNEL_ID=$(uuidgen)
+          STATUS="${{ steps.docker_build.outputs.BUILD_STATUS }}"
+          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
+            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+            -d "{\"event\": \"Docker build completed with status: $STATUS\"}"
 
       - name: 🔍 Trivy Image Scan
         run: |
@@ -56,9 +89,25 @@ jobs:
         run: |
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: 📤 Push Docker image
+      - name: 📤 Push Docker image and capture logs
+        id: docker_push
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:${{ github.sha }}
+          if docker push ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:${{ github.sha }} 2>&1 | tee push.log; then
+            echo "PUSH_STATUS=success" >> $GITHUB_OUTPUT
+          else
+            echo "PUSH_STATUS=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Send Docker push status to Splunk
+        run: |
+          CHANNEL_ID=$(uuidgen)
+          STATUS="${{ steps.docker_push.outputs.PUSH_STATUS }}"
+          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
+            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+            -d "{\"event\": \"Docker push completed with status: $STATUS\"}"
 
       - name: 📤 Upload Gitleaks Report
         uses: actions/upload-artifact@v4
@@ -78,7 +127,7 @@ jobs:
           name: trivy-image-report
           path: trivy-image-results.json
 
-      - name: 📡 Send CI result to Splunk
+      - name: 📡 Send CI final result to Splunk
         run: |
           CHANNEL_ID=$(uuidgen)
           curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
