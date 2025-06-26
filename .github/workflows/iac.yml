@@ -26,7 +26,8 @@ jobs:
 
       - name: Run Checkov scan and save JSON report
         run: |
-          checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json || false
+          checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json
+        continue-on-error: true
 
       - name: Upload Checkov report
         uses: actions/upload-artifact@v4
@@ -41,11 +42,9 @@ jobs:
             exit 0
           fi
 
-          # Print contents for debug
           echo "---- checkov-report.json ----"
           cat checkov-report.json
 
-          # Extract summary counts (handle empty or bad JSON gracefully)
           FAIL_COUNT=$(jq '.results.failed_checks | length' checkov-report.json 2>/dev/null || echo 0)
           PASS_COUNT=$(jq '.results.passed_checks | length' checkov-report.json 2>/dev/null || echo 0)
           SKIP_COUNT=$(jq '.results.skipped_checks | length' checkov-report.json 2>/dev/null || echo 0)
@@ -57,3 +56,13 @@ jobs:
             -H "Content-Type: application/json" \
             -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
             -d "{\"event\": \"Checkov scan completed with Failures: $FAIL_COUNT, Passes: $PASS_COUNT, Skipped: $SKIP_COUNT\"}"
+
+      - name: Fail pipeline if any Checkov checks failed
+        run: |
+          FAIL_COUNT=$(jq '.results.failed_checks | length' checkov-report.json 2>/dev/null || echo 0)
+          if [ "$FAIL_COUNT" -gt 0 ]; then
+            echo "❌ Checkov failed with $FAIL_COUNT failed checks."
+            exit 1
+          else
+            echo "✅ No failed checks detected."
+          fi
