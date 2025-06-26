@@ -50,7 +50,7 @@ jobs:
             -J zap-report.json || true
 
       - name: Upload ZAP DAST Reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: zap-dast-reports
           path: ./zap-results

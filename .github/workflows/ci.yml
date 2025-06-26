@@ -55,19 +55,19 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/devsecops-app:${{ github.sha }}
 
       - name: 📤 Upload Gitleaks Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: gitleaks-report
           path: gitleaks-report.json
 
       - name: 📤 Upload Trivy FS Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: trivy-fs-report
           path: trivy-fs-results.json
 
       - name: 📤 Upload Trivy Image Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: trivy-image-report
           path: trivy-image-results.json
