@@ -21,7 +21,7 @@ jobs:
 
       - name: Update kubeconfig
         run: |
-          aws eks update-kubeconfig --region eu-west-2 --name Project5-EKS-Cluster
+          aws eks update-kubeconfig --region eu-west-2 --name project5-eks-cluster
 
       - name: Deploy to EKS
         run: |
