@@ -29,3 +29,16 @@ jobs:
         with:
           name: checkov-report
           path: checkov-report.json
+
+      - name: Send Checkov report to Splunk
+        run: |
+          if [ -f checkov-report.json ]; then
+            CHANNEL_ID=$(uuidgen)
+            curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
+              -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+              -d @checkov-report.json
+          else
+            echo "Checkov report not found, skipping Splunk upload."
+          fi
