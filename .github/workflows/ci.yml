@@ -80,7 +80,7 @@ jobs:
         id: docker_build
         run: |
           set -o pipefail
-          if docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:${{ github.sha }} . 2>&1 | tee build.log; then
+          if docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest . 2>&1 | tee build.log; then
             echo "BUILD_STATUS=success" >> $GITHUB_OUTPUT
           else
             echo "BUILD_STATUS=failure" >> $GITHUB_OUTPUT
@@ -99,7 +99,7 @@ jobs:
 
       - name: 🔍 Trivy Image Scan
         run: |
-          trivy image --format json --output trivy-image-results.json ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:${{ github.sha }}
+          trivy image --format json --output trivy-image-results.json ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest
 
       - name: 🔐 Login to Docker Hub
         run: |
@@ -108,7 +108,7 @@ jobs:
       - name: 📤 Push Docker image and capture logs
         id: docker_push
         run: |
-          if docker push ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:${{ github.sha }} 2>&1 | tee push.log; then
+          if docker push ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest 2>&1 | tee push.log; then
             echo "PUSH_STATUS=success" >> $GITHUB_OUTPUT
           else
             echo "PUSH_STATUS=failure" >> $GITHUB_OUTPUT
