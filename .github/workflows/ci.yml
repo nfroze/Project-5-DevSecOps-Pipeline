@@ -58,7 +58,7 @@ jobs:
 
       - name: 📤 Push Docker image
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/devsecops-app:${{ github.sha }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:${{ github.sha }}
 
       - name: 📤 Upload Gitleaks Report
         uses: actions/upload-artifact@v4
