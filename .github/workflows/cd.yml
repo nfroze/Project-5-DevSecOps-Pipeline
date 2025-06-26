@@ -31,7 +31,7 @@ jobs:
       - name: Wait for LoadBalancer External IP
         run: |
           for i in {1..60}; do
-            EXTERNAL_IP=$(kubectl get svc devsecops-app-service -n default -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            EXTERNAL_IP=$(kubectl get svc devsecops-service -n default -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
             if [ -n "$EXTERNAL_IP" ]; then
               echo "Service is available at: http://$EXTERNAL_IP"
               break
