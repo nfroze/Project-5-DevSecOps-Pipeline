@@ -21,7 +21,7 @@ jobs:
 
       - name: Install Trivy
         run: |
-          sudo apt-get update && sudo apt-get install -y wget
+          sudo apt-get update && sudo apt-get install -y wget uuid-runtime
           wget https://github.com/aquasecurity/trivy/releases/download/v0.63.0/trivy_0.63.0_Linux-64bit.deb
           sudo dpkg -i trivy_0.63.0_Linux-64bit.deb
 
@@ -80,7 +80,9 @@ jobs:
 
       - name: 📡 Send CI result to Splunk
         run: |
+          CHANNEL_ID=$(uuidgen)
           curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-          -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"event\": \"CI pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed\"}"
+            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+            -d "{\"event\": \"CI pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed\"}"

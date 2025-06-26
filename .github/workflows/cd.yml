@@ -57,8 +57,9 @@ jobs:
 
       - name: 📡 Send CD result to Splunk
         run: |
+          CHANNEL_ID=$(uuidgen)
           curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-          -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-          -H "Content-Type: application/json" \
-          -d '{"event": "CD pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed"}'
-          
+            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+            -d "{\"event\": \"CD pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed\"}"
