@@ -2,8 +2,7 @@ name: CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   deploy:
@@ -11,17 +10,18 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-2
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --region eu-west-2 --name project5-eks-cluster
+        run: |
+          aws eks update-kubeconfig --region eu-west-2 --name Project5-EKS-Cluster
 
       - name: Deploy to EKS
         run: |
@@ -29,32 +29,35 @@ jobs:
           kubectl apply -f k8s/service.yaml
 
       - name: Wait for LoadBalancer External IP
-        id: wait_lb
         run: |
-          for i in {1..30}; do
-            EXTERNAL_IP=$(kubectl get svc devsecops-service -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-            if [[ -n "$EXTERNAL_IP" ]]; then
-              echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
-              echo "External IP acquired: $EXTERNAL_IP"
+          for i in {1..60}; do
+            EXTERNAL_IP=$(kubectl get svc devsecops-app-service -n default -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            if [ -n "$EXTERNAL_IP" ]; then
+              echo "Service is available at: http://$EXTERNAL_IP"
               break
-            else
-              echo "Waiting for LoadBalancer IP..."
-              sleep 10
             fi
+            echo "Waiting for LoadBalancer IP..."
+            sleep 10
           done
 
       - name: Run OWASP ZAP Baseline DAST Scan
         run: |
           mkdir -p zap-results
           docker run --user root -v $(pwd)/zap-results:/zap/wrk/:rw \
-            ghcr.io/zaproxy/zaproxy zap-baseline.py \
-            -t http://${{ env.EXTERNAL_IP }} \
-            -r report_html.html \
-            -J report_json.json \
-            -w report_md.md || true
+            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t http://$EXTERNAL_IP \
+            -r zap-report.html \
+            -J zap-report.json || true
 
       - name: Upload ZAP DAST Reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: zap-dast-reports
-          path: zap-results
+          path: ./zap-results
+
+      - name: 📡 Send CD result to Splunk
+        run: |
+          curl -k http://localhost:8088/services/collector \
+          -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{"event": "CD pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed"}'

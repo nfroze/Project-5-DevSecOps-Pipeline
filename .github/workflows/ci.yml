@@ -2,54 +2,79 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-
-permissions:
-  contents: read
+    branches: [ main ]
 
 jobs:
-  ci-security:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v3
 
-      - name: Install Trivy
+      - name: 🛠 Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🧠 Run Semgrep (SAST)
         run: |
-          wget https://github.com/aquasecurity/trivy/releases/download/v0.45.1/trivy_0.45.1_Linux-64bit.tar.gz
-          tar zxvf trivy_0.45.1_Linux-64bit.tar.gz
-          sudo mv trivy /usr/local/bin/
+          docker run --rm \
+            -v "${{ github.workspace }}:/src" \
+            returntocorp/semgrep-agent \
+            --config "p/default"
 
-      - name: Run Trivy SCA Scan
-        run: trivy fs . --format json --output trivy-report.json
-
-      - name: Upload Trivy Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-report
-          path: trivy-report.json
-
-      - name: Install Semgrep
-        run: pip install semgrep
-
-      - name: Run Semgrep SAST Scan
-        run: semgrep --config=auto --json --output=semgrep-report.json
-
-      - name: Upload Semgrep Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-report
-          path: semgrep-report.json
-
-      - name: Run Gitleaks Secrets Scan
+      - name: 🕵️‍♂️ Run Gitleaks (Secrets Scan)
         uses: gitleaks/gitleaks-action@v2
         with:
-          args: detect --report-format json --report-path gitleaks-report.json
+          args: "--source=. --report-path=gitleaks-report.json --report-format=json"
 
-      - name: Upload Gitleaks Report
-        uses: actions/upload-artifact@v4
+      - name: 🧪 Trivy FS scan (SCA)
+        run: |
+          trivy fs . --format json --output trivy-fs-results.json
+
+      - name: 🐳 Build Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/devsecops-app:${{ github.sha }} .
+
+      - name: 🔍 Trivy Image Scan
+        run: |
+          trivy image --format json --output trivy-image-results.json ${{ secrets.DOCKERHUB_USERNAME }}/devsecops-app:${{ github.sha }}
+
+      - name: 🔐 Login to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: 📤 Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/devsecops-app:${{ github.sha }}
+
+      - name: 📤 Upload Gitleaks Report
+        uses: actions/upload-artifact@v3
         with:
           name: gitleaks-report
           path: gitleaks-report.json
+
+      - name: 📤 Upload Trivy FS Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-fs-report
+          path: trivy-fs-results.json
+
+      - name: 📤 Upload Trivy Image Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-image-report
+          path: trivy-image-results.json
+
+      - name: 📡 Send CI result to Splunk
+        run: |
+          curl -k http://localhost:8088/services/collector \
+          -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{"event": "CI pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed"}'
