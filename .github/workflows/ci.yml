@@ -25,12 +25,6 @@ jobs:
           wget https://github.com/aquasecurity/trivy/releases/download/v0.63.0/trivy_0.63.0_Linux-64bit.deb
           sudo dpkg -i trivy_0.63.0_Linux-64bit.deb
 
-      - name: Install Gitleaks
-        run: |
-          curl -sSfL https://setup.gitleaks.com | sh
-          sudo mv $HOME/.gitleaks/bin/gitleaks /usr/local/bin/
-          gitleaks version
-
       - name: 📦 Install dependencies
         run: npm ci
 
@@ -58,13 +52,25 @@ jobs:
             -d "{\"event\": $RESULTS}"
 
       - name: 🕵️‍♂️ Run Gitleaks (Secrets Scan)
-        run: gitleaks detect --source=. --report-path=gitleaks-report.json --report-format=json
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: "detect --source=. --report-path=gitleaks-report.json --report-format=json"
 
       - name: 📤 Upload Gitleaks Report
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-report
           path: gitleaks-report.json
+
+      - name: Send Gitleaks summary to Splunk
+        run: |
+          FAIL_COUNT=$(jq '.total_findings' gitleaks-report.json 2>/dev/null || echo 0)
+          CHANNEL_ID=$(uuidgen)
+          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
+            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+            -d "{\"event\": \"Gitleaks scan completed with Findings: $FAIL_COUNT\"}"
 
       - name: 🧪 Trivy FS scan (SCA)
         run: |
