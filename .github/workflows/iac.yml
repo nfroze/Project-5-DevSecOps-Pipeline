@@ -31,9 +31,11 @@ jobs:
           name: checkov-report
           path: checkov-report.json
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq uuid-runtime
+
       - name: Parse Checkov summary and send to Splunk
         run: |
-          # Extract number of failed checks
           FAIL_COUNT=$(jq '.results.failed_checks | length' checkov-report.json)
           PASS_COUNT=$(jq '.results.passed_checks | length' checkov-report.json)
           SKIP_COUNT=$(jq '.results.skipped_checks | length' checkov-report.json)

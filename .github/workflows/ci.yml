@@ -51,10 +51,14 @@ jobs:
             -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
             -d "{\"event\": $RESULTS}"
 
-      - name: 🕵️‍♂️ Run Gitleaks (Secrets Scan) summary only
-        uses: gitleaks/gitleaks-action@v2
+      - name: 🕵️‍♂️ Run Gitleaks (Secrets Scan)
+        run: gitleaks detect --source=. --report-path=gitleaks-report.json --report-format=json
+
+      - name: 📤 Upload Gitleaks Report
+        uses: actions/upload-artifact@v4
         with:
-          args: "--source=. --report-path=gitleaks-report.json --report-format=json"
+          name: gitleaks-report
+          path: gitleaks-report.json
 
       - name: 🧪 Trivy FS scan (SCA)
         run: |
@@ -108,12 +112,6 @@ jobs:
             -H "Content-Type: application/json" \
             -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
             -d "{\"event\": \"Docker push completed with status: $STATUS\"}"
-
-      - name: 📤 Upload Gitleaks Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: gitleaks-report
-          path: gitleaks-report.json
 
       - name: 📤 Upload Trivy FS Report
         uses: actions/upload-artifact@v4
