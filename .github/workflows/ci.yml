@@ -27,7 +27,7 @@ jobs:
           docker run --rm \
             -v "${{ github.workspace }}:/src" \
             returntocorp/semgrep-agent \
-            --config "p/default"
+            semgrep --config "p/default"
 
       - name: 🕵️‍♂️ Run Gitleaks (Secrets Scan)
         uses: gitleaks/gitleaks-action@v2
