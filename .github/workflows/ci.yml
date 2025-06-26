@@ -21,7 +21,9 @@ jobs:
 
       - name: Install Trivy
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -
+          sudo apt-get update && sudo apt-get install -y wget
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.41.2_Linux-64bit.deb
+          sudo dpkg -i trivy_0.41.2_Linux-64bit.deb
 
       - name: 📦 Install dependencies
         run: npm ci
