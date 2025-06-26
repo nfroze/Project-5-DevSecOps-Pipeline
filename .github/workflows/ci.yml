@@ -27,9 +27,8 @@ jobs:
 
       - name: Install Gitleaks
         run: |
-          wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64.tar.gz
-          tar -xzf gitleaks.tar.gz
-          sudo mv gitleaks /usr/local/bin/
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/main/install.sh | bash
+          sudo mv $HOME/.gitleaks/bin/gitleaks /usr/local/bin/
           gitleaks version
 
       - name: 📦 Install dependencies
