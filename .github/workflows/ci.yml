@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Gitleaks
         run: |
-          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/main/install.sh | bash
+          curl -sSfL https://setup.gitleaks.com | sh
           sudo mv $HOME/.gitleaks/bin/gitleaks /usr/local/bin/
           gitleaks version
 
