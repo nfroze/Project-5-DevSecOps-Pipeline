@@ -61,3 +61,4 @@ jobs:
           -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
           -H "Content-Type: application/json" \
           -d '{"event": "CD pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed"}'
+          
