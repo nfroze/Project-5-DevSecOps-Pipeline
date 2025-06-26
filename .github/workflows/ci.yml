@@ -46,11 +46,11 @@ jobs:
 
       - name: 🐳 Build Docker image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/devsecops-app:${{ github.sha }} .
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:${{ github.sha }} .
 
       - name: 🔍 Trivy Image Scan
         run: |
-          trivy image --format json --output trivy-image-results.json ${{ secrets.DOCKERHUB_USERNAME }}/devsecops-app:${{ github.sha }}
+          trivy image --format json --output trivy-image-results.json ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:${{ github.sha }}
 
       - name: 🔐 Login to Docker Hub
         run: |
