@@ -83,4 +83,4 @@ jobs:
           curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
           -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
           -H "Content-Type: application/json" \
-          -d '{"event": "CI pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed"}'
+          -d "{\"event\": \"CI pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed\"}"
