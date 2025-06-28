@@ -2,23 +2,26 @@ provider "aws" {
   region = var.aws_region
 }
 
-module "vpc" {
-  source         = "./vpc"
-  vpc_cidr       = var.vpc_cidr
-  azs            = var.azs
-  aws_region     = var.aws_region
-  public_subnets = var.public_subnets
-  private_subnets = var.private_subnets
-  vpc_name       = var.vpc_name
-}
+# Required for VPC IAM policy to scope log group ARNs correctly
+data "aws_caller_identity" "current" {}
 
+module "vpc" {
+  source          = "./vpc"
+  vpc_cidr        = var.vpc_cidr
+  azs             = var.azs
+  aws_region      = var.aws_region
+  public_subnets  = var.public_subnets
+  private_subnets = var.private_subnets
+  vpc_name        = var.vpc_name
+  kms_key_arn     = var.kms_key_arn
+}
 
 module "iam" {
   source = "./iam"
 }
 
 module "eks" {
-  source = "./eks"
+  source                    = "./eks"
 
   cluster_name              = var.cluster_name
   cluster_role_arn          = module.iam.eks_cluster_role_arn
