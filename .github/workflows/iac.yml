@@ -21,6 +21,9 @@ jobs:
       - name: 🔒 Install Checkov
         run: pip install checkov
 
+      - name: 🟩 Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: 🔍 Run Checkov and generate JSON report
         run: |
           checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json
