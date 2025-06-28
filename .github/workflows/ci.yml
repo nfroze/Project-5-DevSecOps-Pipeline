@@ -1,10 +1,10 @@
-name: CI Pipeline
+name: 🧪 CI Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '16'
 
-      - name: Install Trivy and uuid-runtime
+      - name: 🧰 Install Trivy, uuid-runtime, jq
         run: |
           sudo apt-get update && sudo apt-get install -y wget uuid-runtime jq
           wget https://github.com/aquasecurity/trivy/releases/download/v0.63.0/trivy_0.63.0_Linux-64bit.deb
@@ -29,21 +29,34 @@ jobs:
         run: npm ci
 
       - name: 🧠 Run Semgrep (SAST) and save results
+        continue-on-error: true
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/src" \
             returntocorp/semgrep-agent \
             semgrep --config "p/default" --json > semgrep-results.json
 
-      - name: Upload Semgrep SAST results
+      - name: ❌ Fail if Semgrep found any issues
+        run: |
+          ISSUES=$(jq '.results | length' semgrep-results.json)
+          if [ "$ISSUES" -gt 0 ]; then
+            echo "❌ Semgrep found $ISSUES issues"
+            exit 1
+          else
+            echo "✅ No Semgrep issues found"
+          fi
+
+      - name: 📤 Upload Semgrep SAST results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-results
           path: semgrep-results.json
 
-      - name: Send Semgrep SAST results to Splunk
+      - name: 📡 Send Semgrep SAST results to Splunk
+        if: always()
         run: |
-          RESULTS=$(cat semgrep-results.json | jq -c '.')
+          RESULTS=$(jq -c . semgrep-results.json)
           CHANNEL_ID=$(uuidgen)
           curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
             -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
@@ -62,7 +75,7 @@ jobs:
           name: gitleaks-report
           path: gitleaks-report.json
 
-      - name: Send Gitleaks summary to Splunk
+      - name: 📡 Send Gitleaks summary to Splunk
         run: |
           FAIL_COUNT=$(jq '.total_findings' gitleaks-report.json 2>/dev/null || echo 0)
           CHANNEL_ID=$(uuidgen)
@@ -73,8 +86,7 @@ jobs:
             -d "{\"event\": \"Gitleaks scan completed with Findings: $FAIL_COUNT\"}"
 
       - name: 🧪 Trivy FS scan (SCA)
-        run: |
-          trivy fs . --format json --output trivy-fs-results.json
+        run: trivy fs . --format json --output trivy-fs-results.json
 
       - name: 🐳 Build Docker image and capture logs
         id: docker_build
@@ -87,7 +99,7 @@ jobs:
             exit 1
           fi
 
-      - name: Send Docker build status to Splunk
+      - name: 📡 Send Docker build status to Splunk
         run: |
           CHANNEL_ID=$(uuidgen)
           STATUS="${{ steps.docker_build.outputs.BUILD_STATUS }}"
@@ -98,12 +110,10 @@ jobs:
             -d "{\"event\": \"Docker build completed with status: $STATUS\"}"
 
       - name: 🔍 Trivy Image Scan
-        run: |
-          trivy image --format json --output trivy-image-results.json ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest
+        run: trivy image --format json --output trivy-image-results.json ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest
 
       - name: 🔐 Login to Docker Hub
-        run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
       - name: 📤 Push Docker image and capture logs
         id: docker_push
@@ -115,7 +125,7 @@ jobs:
             exit 1
           fi
 
-      - name: Send Docker push status to Splunk
+      - name: 📡 Send Docker push status to Splunk
         run: |
           CHANNEL_ID=$(uuidgen)
           STATUS="${{ steps.docker_push.outputs.PUSH_STATUS }}"

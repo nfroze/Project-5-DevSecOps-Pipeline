@@ -2,14 +2,13 @@ name: IaC Security Scan
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   iac-security:
     runs-on: ubuntu-latest
-
     steps:
       - name: ⬇️ Checkout repository
         uses: actions/checkout@v3
@@ -17,31 +16,28 @@ jobs:
       - name: 🔒 Install Checkov
         run: pip install checkov
 
-      - name: 🔍 Run Checkov and generate report (non-blocking)
+      - name: 🔍 Run Checkov and generate report
         run: |
-          checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json || true
+          checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json
+        continue-on-error: true
 
       - name: 📤 Upload Checkov report to GitHub
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: checkov-report
           path: checkov-report.json
 
       - name: 📡 Send Checkov results to Splunk
+        if: always()
         run: |
-          RESULTS=$(cat checkov-report.json | jq -c '.')
+          RESULTS=$(jq -c . checkov-report.json)
           CHANNEL_ID=$(uuidgen)
           curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
             -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-            -d "{\"event\": $RESULTS}"
+            -d "{\"event\": $RESULTS, \"sourcetype\": \"checkov\", \"channel\": \"$CHANNEL_ID\"}"
 
-      - name: ❌ Fail pipeline if Checkov finds issues
+      - name: ❌ Fail if Checkov found policy violations
         run: |
-          if grep -q '"result": "FAILED"' checkov-report.json; then
-            echo "❌ Checkov failed policies found — blocking pipeline."
-            exit 1
-          else
-            echo "✅ No Checkov failures — continuing."
-          fi
+          checkov -d . --skip-path .terraform

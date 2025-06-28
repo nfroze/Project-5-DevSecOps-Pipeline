@@ -1,78 +1,82 @@
-name: CD Pipeline
+name: 🚀 CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
+      - name: ⬇️ Checkout repository
         uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
+      - name: 🔐 Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-2
 
-      - name: Update kubeconfig
-        run: |
-          aws eks update-kubeconfig --region eu-west-2 --name project5-eks-cluster
+      - name: ⚙️ Update kubeconfig
+        run: aws eks update-kubeconfig --region eu-west-2 --name project5-eks-cluster
 
-      - name: Deploy to EKS
+      - name: 📦 Deploy to EKS
         run: |
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
 
-      - name: Wait for LoadBalancer External IP
+      - name: ⏳ Wait for LoadBalancer external IP
         run: |
           for i in {1..60}; do
             EXTERNAL_IP=$(kubectl get svc devsecops-service -n default -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
             if [ -n "$EXTERNAL_IP" ]; then
-              echo "Service is available at: http://$EXTERNAL_IP"
+              echo "✅ External IP: http://$EXTERNAL_IP"
               break
             fi
             echo "Waiting for LoadBalancer IP..."
             sleep 10
           done
 
-      - name: Run OWASP ZAP Baseline DAST Scan and save report
+      - name: 🛡️ Run OWASP ZAP Baseline DAST Scan and save report (fail on warn)
+        continue-on-error: true
         run: |
           mkdir -p zap-results
           docker run --user root -v $(pwd)/zap-results:/zap/wrk/:rw \
             ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
             -t http://$EXTERNAL_IP \
             -r zap-report.html \
-            -J zap-report.json || true
+            -J zap-report.json \
+            --fail-on-warn
 
-      - name: Upload ZAP DAST Reports
+      - name: 📤 Upload ZAP DAST Reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-dast-reports
           path: ./zap-results
 
-      - name: Send ZAP DAST JSON report to Splunk
+      - name: 📡 Send ZAP DAST JSON report to Splunk
+        if: always()
         run: |
           if [ -f zap-results/zap-report.json ]; then
             CHANNEL_ID=$(uuidgen)
+            RESULTS=$(jq -c . zap-results/zap-report.json)
             curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
               -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
               -H "Content-Type: application/json" \
-              -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-              -d @zap-results/zap-report.json
+              -d "{\"event\": $RESULTS, \"sourcetype\": \"zap\", \"channel\": \"$CHANNEL_ID\"}"
           else
-            echo "ZAP report JSON not found, skipping Splunk upload."
+            echo "⚠️ ZAP report JSON not found, skipping Splunk upload."
           fi
 
-      - name: 📡 Send CD final result to Splunk
+      - name: ❌ Fail if ZAP found vulnerabilities
         run: |
-          CHANNEL_ID=$(uuidgen)
-          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-            -d "{\"event\": \"CD pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed\"}"
+          echo "Checking ZAP exit code..."
+          docker run --rm \
+            -v $(pwd)/zap-results:/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t http://$EXTERNAL_IP \
+            --fail-on-warn \
+            --auto \
+            --json || exit 1
