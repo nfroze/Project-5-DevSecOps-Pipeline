@@ -21,9 +21,6 @@ jobs:
       - name: 🔒 Install Checkov
         run: pip install checkov
 
-      - name: 🟩 Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
       - name: 🔍 Run Checkov and generate JSON report
         run: |
           checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json
@@ -39,12 +36,11 @@ jobs:
       - name: 📡 Send Checkov results to Splunk
         if: always()
         run: |
-          RESULTS=$(jq -c . checkov-report.json)
           CHANNEL_ID=$(uuidgen)
           curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
             -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d "{\"event\": $RESULTS, \"sourcetype\": \"checkov\", \"channel\": \"$CHANNEL_ID\"}"
+            -d "{\"event\": $(cat checkov-report.json), \"sourcetype\": \"checkov\", \"channel\": \"$CHANNEL_ID\"}"
 
       - name: ❌ Fail if Checkov found policy violations
         run: |
