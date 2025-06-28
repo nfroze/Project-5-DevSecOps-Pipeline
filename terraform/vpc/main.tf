@@ -2,6 +2,8 @@ provider "aws" {
   region = var.aws_region
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -114,7 +116,7 @@ resource "aws_default_security_group" "default" {
 
 resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
   name              = "${var.vpc_name}-flow-logs"
-  retention_in_days = 7
+  retention_in_days = 365
   kms_key_id        = var.kms_key_arn  # 🔐 Encryption enabled
 }
 
@@ -145,11 +147,17 @@ resource "aws_iam_role_policy" "vpc_flow_logs" {
       {
         Effect = "Allow",
         Action = [
-          "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents",
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams"
+        ],
+        Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:${var.vpc_name}-flow-logs:*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "logs:CreateLogGroup"
         ],
         Resource = "*"
       }
