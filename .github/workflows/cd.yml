@@ -1,11 +1,8 @@
-name: Deploy and ZAP Scan
-
-permissions:
-  contents: read
+name: Continuous Deployment
 
 on:
   workflow_run:
-    workflows: ["Build and Push Docker Image"]
+    workflows: ["Continuous Build"]
     types:
       - completed
 
@@ -14,49 +11,58 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
-    env:
-      IMAGE_NAME: nfroze/project5-app
-
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set image tag
-        run: echo "IMAGE_TAG=${{ github.sha }}" >> "$GITHUB_ENV"
+        run: echo "IMAGE_TAG=${{ github.sha }}" >> "$GITHUB_ENV" # nosemgrep
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Update kubeconfig for EKS
+        run: aws eks update-kubeconfig --region eu-west-2 --name project5-cluster
 
       - name: Deploy to EKS
         run: |
-          aws eks --region eu-west-2 update-kubeconfig --name project5-cluster
-          kubectl set image deployment/project5-app project5-app=$IMAGE_NAME:$IMAGE_TAG
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
 
-      - name: Wait for deployment to be ready
+      - name: Install Trivy
         run: |
-          kubectl rollout status deployment/project5-app
+          sudo apt-get update
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y
 
-      - name: ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.12.0
-        with:
-          target: http://a1fc376fb666a42afa11820972d153a1-528790283.eu-west-2.elb.amazonaws.com/
-          cmd_options: '-a'
+      - name: Scan running container in EKS (by image)
+        run: |
+          IMAGE_ID="nfroze/project5-app:${{ env.IMAGE_TAG }}"
+          trivy image --format json --output trivy-deploy-report.json $IMAGE_ID
         continue-on-error: true
 
-      - name: Upload ZAP Report (Markdown)
-        if: always()
+      - name: Upload Trivy JSON Report (CD)
         uses: actions/upload-artifact@v4
         with:
-          name: zap-report
-          path: report.md
+          name: trivy-deploy-report
+          path: trivy-deploy-report.json
 
-      - name: Send ZAP Report to Splunk (as text blob)
+      - name: Send Report to Splunk
         if: always()
         env:
           SPLUNK_HEC_URL: ${{ secrets.SPLUNK_HEC_URL }}
           SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
         run: |
-          if [ -f report.md ]; then
-            ESCAPED=$(jq -Rs '.' < report.md)
+          if [ -f trivy-deploy-report.json ]; then
             curl -k "$SPLUNK_HEC_URL" \
               -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "{\"event\": $ESCAPED, \"sourcetype\": \"zap-report-md\", \"channel\": \"$(uuidgen)\"}"
+              -d "{\"event\": $(cat trivy-deploy-report.json), \"sourcetype\": \"trivy-deploy\", \"channel\": \"cd-${GITHUB_RUN_ID}\"}"
           fi
