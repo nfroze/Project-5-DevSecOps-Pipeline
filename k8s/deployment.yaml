@@ -14,6 +14,8 @@ spec:
       labels:
         app: project5-app
     spec:
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: project5-app
           # checkov:skip=CKV_K8S_43: Using :latest tag for automated CI/CD updates
@@ -27,3 +29,5 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "500m"
+          securityContext:
+            allowPrivilegeEscalation: false

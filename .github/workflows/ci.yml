@@ -36,16 +36,6 @@ jobs:
             returntocorp/semgrep-agent \
             semgrep --config "p/default" --json > semgrep-results.json
 
-      - name: ❌ Fail if Semgrep found any issues
-        run: |
-          ISSUES=$(jq '.results | length' semgrep-results.json)
-          if [ "$ISSUES" -gt 0 ]; then
-            echo "❌ Semgrep found $ISSUES issues"
-            exit 1
-          else
-            echo "✅ No Semgrep issues found"
-          fi
-
       - name: 📤 Upload Semgrep SAST results
         if: always()
         uses: actions/upload-artifact@v4
@@ -56,13 +46,26 @@ jobs:
       - name: 📡 Send Semgrep SAST results to Splunk
         if: always()
         run: |
-          RESULTS=$(jq -c . semgrep-results.json)
-          CHANNEL_ID=$(uuidgen)
-          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-            -d "{\"event\": $RESULTS}"
+          if [ -f semgrep-results.json ]; then
+            CHANNEL_ID=$(uuidgen)
+            RESULTS=$(jq -c . semgrep-results.json)
+            curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
+              -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+              -d "{\"event\": $RESULTS}"
+          else
+            echo "⚠️ Semgrep report not found. Skipping Splunk upload."
+
+      - name: ❌ Fail if Semgrep found any issues
+        run: |
+          ISSUES=$(jq '.results | length' semgrep-results.json)
+          if [ "$ISSUES" -gt 0 ]; then
+            echo "❌ Semgrep found $ISSUES issues"
+            exit 1
+          else
+            echo "✅ No Semgrep issues found"
+          fi
 
       - name: 🕵️‍♂️ Run Gitleaks (Secrets Scan)
         uses: gitleaks/gitleaks-action@v2
@@ -110,7 +113,30 @@ jobs:
             -d "{\"event\": \"Docker build completed with status: $STATUS\"}"
 
       - name: 🔍 Trivy Image Scan
-        run: trivy image --format json --output trivy-image-results.json ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest
+        continue-on-error: true
+        run: |
+          trivy image \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --format json \
+            --output trivy-image-results.json ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest
+
+      - name: 📤 Upload Trivy Image Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-report
+          path: trivy-image-results.json
+
+      - name: ❌ Fail if Trivy Image Scan found vulnerabilities
+        run: |
+          COUNT=$(jq '[.Results[]?.Vulnerabilities? // []] | flatten | length' trivy-image-results.json)
+          if [ "$COUNT" -gt 0 ]; then
+            echo "❌ Trivy Image Scan found $COUNT vulnerabilities"
+            exit 1
+          else
+            echo "✅ No high/critical vulnerabilities found"
+          fi
 
       - name: 🔐 Login to Docker Hub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
@@ -141,12 +167,6 @@ jobs:
           name: trivy-fs-report
           path: trivy-fs-results.json
 
-      - name: 📤 Upload Trivy Image Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-image-report
-          path: trivy-image-results.json
-
       - name: 📡 Send CI final result to Splunk
         run: |
           CHANNEL_ID=$(uuidgen)
@@ -154,4 +174,4 @@ jobs:
             -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
             -H "Content-Type: application/json" \
             -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-            -d "{\"event\": \"CI pipeline ${{ github.workflow }} on branch ${{ github.ref_name }} (run #${{ github.run_number }}) completed\"}"
+            -d '{"event": "CI pipeline '${{ github.workflow }}' on branch '${{ github.ref_name }}' (run #'${{ github.run_number }}') completed"}'
