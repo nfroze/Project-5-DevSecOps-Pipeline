@@ -5,12 +5,10 @@ on:
     branches: [main]
     paths:
       - '**/*.tf'
-      - '**/terraform/**'
   pull_request:
     branches: [main]
     paths:
       - '**/*.tf'
-      - '**/terraform/**'
 
 jobs:
   iac-security:
