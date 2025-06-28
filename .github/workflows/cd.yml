@@ -28,6 +28,9 @@ jobs:
       - name: Update kubeconfig for EKS
         run: aws eks update-kubeconfig --region eu-west-2 --name project5-eks-cluster
 
+      - name: Create project5 namespace
+        run: kubectl apply -f k8s/namespace.yaml
+
       - name: Deploy to EKS
         run: |
           kubectl apply -f k8s/deployment.yaml
