@@ -16,6 +16,7 @@
     "cookie-parser": "^1.4.7",
     "cookie-signature": "^1.0.6",
     "cross-spawn": "^7.0.6",
+    "csurf": "^1.11.0",
     "debug": "^2.6.9",
     "depd": "^2.0.0",
     "destroy": "^1.2.0",
