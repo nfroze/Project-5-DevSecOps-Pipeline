@@ -40,24 +40,26 @@ jobs:
           output: trivy-report.json
           ignore-unfixed: true
 
-      - name: Check Trivy report for vulnerabilities
+      - name: Send Trivy JSON report to Splunk
+        if: always()
+        env:
+          SPLUNK_HEC_URL: ${{ secrets.SPLUNK_HEC_URL }}
+          SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
+        run: |
+          if [ -f trivy-report.json ]; then
+            curl -k "$SPLUNK_HEC_URL" \
+              -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"event\": $(cat trivy-report.json), \"sourcetype\": \"trivy-image-scan\"}"
+          fi
+
+      - name: Fail if vulnerabilities found
         run: |
           if jq '.Results[].Vulnerabilities | length > 0' trivy-report.json | grep true; then
-            echo "Vulnerabilities found in image. Failing build."
+            echo "❌ Vulnerabilities found in Docker image"
             exit 1
-          else
-            echo "No vulnerabilities found. Continuing..."
           fi
 
       - name: Push image to Docker Hub
         run: |
           docker push $IMAGE_NAME:$IMAGE_TAG
-
-      - name: Send Trivy JSON report to Splunk
-        env:
-          SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
-        run: |
-          curl -k https://<your-hec-url>/services/collector \
-            -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"event\": $(cat trivy-report.json)}"

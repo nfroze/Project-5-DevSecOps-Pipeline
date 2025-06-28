@@ -38,13 +38,21 @@ jobs:
 
       - name: 📡 Send Checkov results to Splunk
         if: always()
+        env:
+          SPLUNK_HEC_URL: ${{ secrets.SPLUNK_HEC_URL }}
+          SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
         run: |
-          CHANNEL_ID=$(uuidgen)
-          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"event\": $(cat checkov-report.json), \"sourcetype\": \"checkov\", \"channel\": \"$CHANNEL_ID\"}"
+          if [ -f checkov-report.json ]; then
+            CHANNEL_ID=$(uuidgen)
+            curl -k "$SPLUNK_HEC_URL" \
+              -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"event\": $(cat checkov-report.json), \"sourcetype\": \"checkov\", \"channel\": \"$CHANNEL_ID\"}"
+          fi
 
       - name: ❌ Fail if Checkov found policy violations
         run: |
-          checkov -d . --skip-path .terraform
+          if jq '.results.failed_checks | length > 0' checkov-report.json | grep true; then
+            echo "❌ Checkov found policy violations"
+            exit 1
+          fi

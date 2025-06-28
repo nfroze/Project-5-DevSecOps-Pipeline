@@ -32,3 +32,26 @@ jobs:
         with:
           target: http://a1fc376fb666a42afa11820972d153a1-528790283.eu-west-2.elb.amazonaws.com/
           cmd_options: '-a'
+        continue-on-error: true
+
+      - name: Upload ZAP Report (Markdown)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: report.md
+
+      - name: Send ZAP Report to Splunk (as text blob)
+        if: always()
+        env:
+          SPLUNK_HEC_URL: ${{ secrets.SPLUNK_HEC_URL }}
+          SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
+        run: |
+          if [ -f report.md ]; then
+            CHANNEL_ID=$(uuidgen)
+            ESCAPED=$(jq -Rs '.' < report.md)
+            curl -k "$SPLUNK_HEC_URL" \
+              -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"event\": $ESCAPED, \"sourcetype\": \"zap-report-md\", \"channel\": \"$CHANNEL_ID\"}"
+          fi

@@ -70,12 +70,13 @@ jobs:
       - name: Send Reports to Splunk
         if: always()
         env:
+          SPLUNK_HEC_URL: ${{ secrets.SPLUNK_HEC_URL }}
           SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
         run: |
           CHANNEL_ID=$(uuidgen)
           for file in trivy-results.json semgrep-report.json gitleaks-report.json; do
             if [ -f "$file" ]; then
-              curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
+              curl -k "$SPLUNK_HEC_URL" \
                 -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
                 -H "Content-Type: application/json" \
                 -d "{\"event\": $(cat $file), \"sourcetype\": \"${file%.json}\", \"channel\": \"$CHANNEL_ID\"}"
