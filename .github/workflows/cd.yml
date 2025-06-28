@@ -14,14 +14,28 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
+    env:
+      IMAGE_NAME: nfroze/project5-app
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Download Image Tag Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: image-tag
+
+      - name: Read Image Tag
+        id: read_tag
+        run: |
+          IMAGE_TAG=$(cat image-tag.txt)
+          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+
       - name: Deploy to EKS
         run: |
           aws eks --region eu-west-2 update-kubeconfig --name project5-cluster
-          kubectl apply -f k8s/
+          kubectl set image deployment/project5-app project5-app=$IMAGE_NAME:$IMAGE_TAG
 
       - name: Wait for deployment to be ready
         run: |
@@ -48,10 +62,9 @@ jobs:
           SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
         run: |
           if [ -f report.md ]; then
-            CHANNEL_ID=$(uuidgen)
             ESCAPED=$(jq -Rs '.' < report.md)
             curl -k "$SPLUNK_HEC_URL" \
               -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "{\"event\": $ESCAPED, \"sourcetype\": \"zap-report-md\", \"channel\": \"$CHANNEL_ID\"}"
+              -d "{\"event\": $ESCAPED, \"sourcetype\": \"zap-report-md\", \"channel\": \"$(uuidgen)\"}"
           fi

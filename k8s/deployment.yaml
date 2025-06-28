@@ -23,8 +23,6 @@ spec:
           type: RuntimeDefault
       containers:
         - name: project5-app
-          # checkov:skip=CKV_K8S_14: Accepting latest tag for CI/CD automation
-          # checkov:skip=CKV_K8S_43: Using :latest tag for automated CI/CD updates
           image: nfroze/project5-app:latest
           ports:
             - containerPort: 3000

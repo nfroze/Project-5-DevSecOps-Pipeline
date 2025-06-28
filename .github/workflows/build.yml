@@ -13,7 +13,7 @@ jobs:
 
     env:
       IMAGE_NAME: nfroze/project5-app
-      IMAGE_TAG: latest
+      IMAGE_TAG: ${{ github.sha }}
 
     steps:
       - name: Checkout repository
@@ -50,7 +50,7 @@ jobs:
             curl -k "$SPLUNK_HEC_URL" \
               -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "{\"event\": $(cat trivy-report.json), \"sourcetype\": \"trivy-image-scan\"}"
+              -d "{\"event\": $(cat trivy-report.json), \"sourcetype\": \"trivy-image-scan\", \"channel\": \"$(uuidgen)\"}"
           fi
 
       - name: Fail if vulnerabilities found
@@ -63,3 +63,12 @@ jobs:
       - name: Push image to Docker Hub
         run: |
           docker push $IMAGE_NAME:$IMAGE_TAG
+
+      - name: Save Image Tag
+        run: echo "${{ env.IMAGE_TAG }}" > image-tag.txt
+
+      - name: Upload Image Tag Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-tag
+          path: image-tag.txt
