@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: project5-deployment
+  namespace: project5
   labels:
     app: project5-app
 spec:
@@ -16,8 +17,11 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: project5-app
+          # checkov:skip=CKV_K8S_14: Accepting latest tag for CI/CD automation
           # checkov:skip=CKV_K8S_43: Using :latest tag for automated CI/CD updates
           image: nfroze/project5-app:latest
           ports:
@@ -29,6 +33,15 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
           securityContext:
             allowPrivilegeEscalation: false
-            
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
