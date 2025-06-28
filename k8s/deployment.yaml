@@ -18,7 +18,7 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1001
+        runAsUser: 10001  # ✅ High UID to pass CKV_K8S_40
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -48,7 +48,7 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 20
           securityContext:
-            runAsUser: 1000
+            runAsUser: 10001  # ✅ Must match or exceed pod-level UID
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:

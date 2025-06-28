@@ -147,19 +147,19 @@ resource "aws_iam_role_policy" "vpc_flow_logs" {
       {
         Effect = "Allow",
         Action = [
+          "logs:CreateLogGroup"
+        ],
+        Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:${var.vpc_name}-flow-logs"
+      },
+      {
+        Effect = "Allow",
+        Action = [
           "logs:CreateLogStream",
           "logs:PutLogEvents",
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams"
         ],
         Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:${var.vpc_name}-flow-logs:*"
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "logs:CreateLogGroup"
-        ],
-        Resource = "*"
       }
     ]
   })
