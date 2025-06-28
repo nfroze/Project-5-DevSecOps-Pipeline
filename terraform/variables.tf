@@ -19,16 +19,19 @@ variable "azs" {
 variable "cluster_name" {
   description = "Name of the EKS cluster"
   type        = string
+  default     = "devsecops-eks-demo"
 }
 
 variable "node_group_name" {
   description = "Name of the EKS node group"
   type        = string
+  default     = "devsecops-eks-nodes"
 }
 
 variable "node_role_arn" {
   description = "IAM role ARN for the node group"
   type        = string
+  # No default (must be supplied)
 }
 
 variable "desired_capacity" {
@@ -64,29 +67,35 @@ variable "ami_type" {
 variable "ssh_key" {
   description = "Name of the EC2 Key Pair to enable SSH access"
   type        = string
+  # No default (must be supplied)
 }
 
 variable "source_security_group_ids" {
   description = "List of source security group IDs for SSH access"
   type        = list(string)
+  # No default (must be supplied)
 }
 
 variable "kms_key_arn" {
   description = "KMS key ARN for encrypting secrets in EKS"
   type        = string
+  # No default (must be supplied)
 }
 
 variable "public_subnets" {
   description = "List of public subnet CIDRs"
   type        = list(string)
+  # No default (must be supplied)
 }
 
 variable "private_subnets" {
   description = "List of private subnet CIDRs"
   type        = list(string)
+  # No default (must be supplied)
 }
 
 variable "vpc_name" {
   description = "Name for the VPC"
   type        = string
+  default     = "devsecops-vpc"
 }
