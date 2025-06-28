@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths-ignore:
       - '**/*.tf'
+      - '.github/workflows/iac.yml'
   pull_request:
     branches: [main]
     paths-ignore:
       - '**/*.tf'
+      - '.github/workflows/iac.yml'
 jobs:
   ci:
     runs-on: ubuntu-latest
