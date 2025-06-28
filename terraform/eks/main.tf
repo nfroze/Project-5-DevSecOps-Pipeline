@@ -23,10 +23,5 @@ resource "aws_eks_node_group" "node_group" {
 
   instance_types = var.instance_types
 
-  remote_access {
-    ec2_ssh_key               = var.ssh_key
-    source_security_group_ids = var.source_security_group_ids
-  }
-
   depends_on = [aws_iam_role_policy_attachment.eks_AmazonEKSWorkerNodePolicy]
 }

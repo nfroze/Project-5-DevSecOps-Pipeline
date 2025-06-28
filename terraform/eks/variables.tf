@@ -1,54 +1,44 @@
 variable "cluster_name" {
-  description = "EKS cluster name"
-  type        = string
-}
-
-variable "cluster_role_arn" {
-  description = "IAM role ARN for EKS cluster"
-  type        = string
-}
-
-variable "node_role_arn" {
-  description = "IAM role ARN for EKS nodes"
+  description = "Name of the EKS cluster"
   type        = string
 }
 
 variable "subnet_ids" {
-  description = "List of subnet IDs for the EKS cluster and node group"
+  description = "List of private subnet IDs"
   type        = list(string)
 }
 
 variable "node_group_name" {
-  description = "Name of the node group"
+  description = "Name of the EKS node group"
+  type        = string
+}
+
+variable "node_role_arn" {
+  description = "IAM role ARN for the node group"
+  type        = string
+}
+
+variable "cluster_role_arn" {
+  description = "IAM role ARN for the EKS cluster"
   type        = string
 }
 
 variable "desired_capacity" {
-  description = "Desired node group capacity"
+  description = "Desired number of nodes"
   type        = number
 }
 
 variable "min_capacity" {
-  description = "Minimum node group capacity"
+  description = "Minimum number of nodes"
   type        = number
 }
 
 variable "max_capacity" {
-  description = "Maximum node group capacity"
+  description = "Maximum number of nodes"
   type        = number
 }
 
 variable "instance_types" {
-  description = "Instance types for the node group"
-  type        = list(string)
-}
-
-variable "ssh_key" {
-  description = "SSH key name for EC2 access"
-  type        = string
-}
-
-variable "source_security_group_ids" {
-  description = "List of security group IDs allowed to access nodes"
+  description = "List of instance types"
   type        = list(string)
 }

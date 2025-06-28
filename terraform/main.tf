@@ -17,14 +17,14 @@ module "iam" {
 }
 
 module "eks" {
-  source            = "./eks"
-  cluster_name      = var.cluster_name
-  subnet_ids        = module.vpc.private_subnet_ids
-  node_group_name   = var.node_group_name
-  node_role_arn     = module.iam.node_role_arn
-  desired_capacity  = var.desired_capacity
-  min_capacity      = var.min_capacity
-  max_capacity      = var.max_capacity
-  instance_types    = var.instance_types
-  ssh_key           = var.ssh_key
+  source           = "./eks"
+  cluster_name     = var.cluster_name
+  subnet_ids       = module.vpc.private_subnet_ids
+  node_group_name  = var.node_group_name
+  node_role_arn    = module.iam.node_role_arn
+  cluster_role_arn = module.iam.cluster_role_arn
+  desired_capacity = var.desired_capacity
+  min_capacity     = var.min_capacity
+  max_capacity     = var.max_capacity
+  instance_types   = var.instance_types
 }
