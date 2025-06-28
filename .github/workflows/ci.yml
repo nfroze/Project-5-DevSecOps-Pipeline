@@ -1,61 +1,63 @@
-name: 🔐 CI Pipeline
+name: Continuous Integration
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
-  semgrep:
-    name: Static Code Analysis - Semgrep
+  ci:
+    name: Security Scans (Trivy, Semgrep, Gitleaks)
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          config: >-
-            p/ci,p/security-audit,p/secrets
-        env:
-          SEMGREP_RULES: >-
-            p/ci,p/security-audit,p/secrets
+          node-version: 20
 
-  gitleaks:
-    name: Secret Scan - Gitleaks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: npm ci
 
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          args: "--verbose --redact --report-format sarif --report-path gitleaks-report.sarif"
-
-      - name: Upload Gitleaks SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: gitleaks-report.sarif
-
-  trivy:
-    name: Dependency Scan - Trivy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run Trivy vulnerability scanner
+      # === Trivy SCA & Image Scan ===
+      - name: Run Trivy (SCA Scan)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
-          scan-ref: .
-          format: sarif
-          output: trivy-results.sarif
+          format: json
+          output: trivy-results.json
 
-      - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Upload Trivy JSON Report
+        uses: actions/upload-artifact@v4
         with:
-          sarif_file: trivy-results.sarif
+          name: trivy-results
+          path: trivy-results.json
+
+      # === Semgrep SAST ===
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep (SAST)
+        run: semgrep scan --config auto --json --output semgrep-report.json
+
+      - name: Upload Semgrep JSON Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: semgrep-report.json
+
+      # === Gitleaks Secrets Scan ===
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: detect --source=. --report-format=json --report-path=gitleaks-report.json
+
+      - name: Upload Gitleaks JSON Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
