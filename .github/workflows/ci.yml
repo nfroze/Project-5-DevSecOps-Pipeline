@@ -41,8 +41,8 @@ jobs:
       - name: Install Semgrep
         run: pip install semgrep
 
-      - name: Run Semgrep (SAST)
-        run: semgrep scan --config auto --json --output semgrep-report.json
+      - name: Run Semgrep (JSON Output)
+        run: semgrep --config=auto --json --output=semgrep-report.json
 
       - name: Upload Semgrep JSON Report
         uses: actions/upload-artifact@v4
@@ -50,11 +50,15 @@ jobs:
           name: semgrep-report
           path: semgrep-report.json
 
-      # === Gitleaks Secrets Scan ===
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          args: detect --source=. --report-format=json --report-path=gitleaks-report.json
+      # === Gitleaks Secrets Scan (Manual JSON Output) ===
+      - name: Install Gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks
+          chmod +x gitleaks
+          sudo mv gitleaks /usr/local/bin/
+
+      - name: Run Gitleaks (JSON Output)
+        run: gitleaks detect --source=. --report-format=json --report-path=gitleaks-report.json
 
       - name: Upload Gitleaks JSON Report
         uses: actions/upload-artifact@v4
