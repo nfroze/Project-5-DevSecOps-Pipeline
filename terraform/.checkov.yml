@@ -1,17 +1,14 @@
-skip-check:
-  - CKV_AWS_61            # S3 logging not enabled (not using S3)
-  - CKV_AWS_158           # S3 log retention (not using S3)
-  - CKV_AWS_355           # Unrestricted write to S3
-  - CKV_AWS_356           # Wildcard IAM policy resource
-  - CKV_AWS_111           # Wildcard IAM actions
-  - CKV_K8S_20            # No NetworkPolicy
-  - CKV_K8S_28            # No livenessProbe
-  - CKV_K8S_37            # Service account automount
-  - CKV_K8S_38            # No runAsUser
-  - CKV_K8S_43            # No image tag
-  - CKV_K8S_49            # No image digest
-  - CKV_K8S_37            # Automount service account token
-  - CKV_DOCKER_2          # No HEALTHCHECK
-  - CKV_DOCKER_7          # Running as root
-  - CKV_K8S_43            # No image tag
-  - CKV_K8S_49            # No image digest
+skip_checks:
+  - CKV_AWS_61
+  - CKV_AWS_158
+  - CKV_AWS_355
+  - CKV_AWS_356
+  - CKV_AWS_111
+  - CKV_K8S_20
+  - CKV_K8S_28
+  - CKV_K8S_37
+  - CKV_K8S_38
+  - CKV_K8S_43
+  - CKV_K8S_49
+  - CKV_DOCKER_2
+  - CKV_DOCKER_7
