@@ -110,25 +110,26 @@ resource "aws_default_security_group" "default" {
   }
 }
 
-# --- VPC Flow Logs to CloudWatch (CKV2_AWS_11) ---
+# --- VPC Flow Logs to CloudWatch (Encrypted with KMS) ---
 
 resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
   name              = "${var.vpc_name}-flow-logs"
   retention_in_days = 7
+  kms_key_id        = var.kms_key_arn  # 🔐 Encryption enabled
 }
 
 resource "aws_iam_role" "vpc_flow_logs" {
   name = "${var.vpc_name}-flow-logs-role"
 
   assume_role_policy = jsonencode({
-    "Version" : "2012-10-17",
-    "Statement" : [
+    Version = "2012-10-17",
+    Statement = [
       {
-        "Effect" : "Allow",
-        "Principal" : {
-          "Service" : "vpc-flow-logs.amazonaws.com"
+        Effect = "Allow",
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
         },
-        "Action" : "sts:AssumeRole"
+        Action = "sts:AssumeRole"
       }
     ]
   })
@@ -139,18 +140,18 @@ resource "aws_iam_role_policy" "vpc_flow_logs" {
   role = aws_iam_role.vpc_flow_logs.id
 
   policy = jsonencode({
-    "Version" : "2012-10-17",
-    "Statement" : [
+    Version = "2012-10-17",
+    Statement = [
       {
-        "Effect" : "Allow",
-        "Action" : [
+        Effect = "Allow",
+        Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents",
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams"
         ],
-        "Resource" : "*"
+        Resource = "*"
       }
     ]
   })
