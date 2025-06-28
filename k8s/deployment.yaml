@@ -31,3 +31,4 @@ spec:
               cpu: "500m"
           securityContext:
             allowPrivilegeEscalation: false
+            
