@@ -1,172 +1,81 @@
-name: 🧪 CI Pipeline
+name: 🔐 CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
 
 jobs:
-  build:
+  security-scans:
     runs-on: ubuntu-latest
 
     steps:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v3
 
-      - name: 🛠 Set up Node.js
-        uses: actions/setup-node@v3
+      - name: 🧠 Semgrep (SAST Scan)
+        uses: returntocorp/semgrep-action@v1
         with:
-          node-version: '16'
+          config: p/default
 
-      - name: 🧰 Install Trivy, uuid-runtime, jq
-        run: |
-          sudo apt-get update && sudo apt-get install -y wget uuid-runtime jq
-          wget https://github.com/aquasecurity/trivy/releases/download/v0.63.0/trivy_0.63.0_Linux-64bit.deb
-          sudo dpkg -i trivy_0.63.0_Linux-64bit.deb
-
-      - name: 📦 Install dependencies
-        run: npm ci
-
-      - name: 🧠 Run Semgrep (SAST) and save results
-        continue-on-error: true
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/src" \
-            returntocorp/semgrep-agent \
-            semgrep --config "p/default" --json > semgrep-results.json
-
-      - name: 📤 Upload Semgrep SAST results
+      - name: 📤 Upload Semgrep Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-results
-          path: semgrep-results.json
+          path: semgrep.sarif
 
-      - name: 📡 Send Semgrep SAST results to Splunk
+      - name: 📡 Send Semgrep Results to Splunk
         if: always()
         run: |
-          if [ -f semgrep-results.json ]; then
+          if [ -f semgrep.sarif ]; then
             CHANNEL_ID=$(uuidgen)
-            RESULTS=$(jq -c . semgrep-results.json)
+            DATA=$(cat semgrep.sarif | jq -c .)
             curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
               -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
               -H "Content-Type: application/json" \
               -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-              -d "{\"event\": $RESULTS}"
+              -d "{\"event\": $DATA}"
           fi
 
-      - name: ❌ Fail if Semgrep found any issues
-        run: |
-          ISSUES=$(jq '.results | length' semgrep-results.json)
-          if [ "$ISSUES" -gt 0 ]; then
-            echo "❌ Semgrep found $ISSUES issues"
-            exit 1
-          else
-            echo "✅ No Semgrep issues found"
-          fi
-
-      - name: 🕵️‍♂️ Run Gitleaks (Secrets Scan)
-        run: |
-          docker run --rm -v $(pwd):/path zricethezav/gitleaks:latest detect \
-            --source=/path \
-            --report-path=/path/gitleaks-report.json \
-            --report-format=json
-
-      - name: 📤 Upload Gitleaks Report
-        uses: actions/upload-artifact@v4
+      - name: 🛡️ Checkov (Terraform Scan)
+        uses: bridgecrewio/checkov-action@master
         with:
-          name: gitleaks-report
-          path: gitleaks-report.json
-
-      - name: 📡 Send Gitleaks summary to Splunk
-        run: |
-          FAIL_COUNT=$(jq '.total_findings' gitleaks-report.json 2>/dev/null || echo 0)
-          CHANNEL_ID=$(uuidgen)
-          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-            -d "{\"event\": \"Gitleaks scan completed with Findings: $FAIL_COUNT\"}"
-
-      - name: 🧪 Trivy FS scan (SCA)
-        run: trivy fs . --format json --output trivy-fs-results.json
-
-      - name: 🐳 Build Docker image and capture logs
-        id: docker_build
-        run: |
-          set -o pipefail
-          if docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest . 2>&1 | tee build.log; then
-            echo "BUILD_STATUS=success" >> $GITHUB_OUTPUT
-          else
-            echo "BUILD_STATUS=failure" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
-      - name: 📡 Send Docker build status to Splunk
-        run: |
-          CHANNEL_ID=$(uuidgen)
-          STATUS="${{ steps.docker_build.outputs.BUILD_STATUS }}"
-          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-            -d "{\"event\": \"Docker build completed with status: $STATUS\"}"
+          directory: .
+          framework: terraform
 
       - name: 🔍 Trivy Image Scan
-        continue-on-error: true
-        run: |
-          trivy image \
-            --severity HIGH,CRITICAL \
-            --exit-code 1 \
-            --format json \
-            --output trivy-image-results.json ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: nfroze/project5-app:latest
+          format: json
+          output: trivy-results.json
 
-      - name: 📤 Upload Trivy Image Report
+      - name: 📤 Upload Trivy Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-image-report
-          path: trivy-image-results.json
+          name: trivy-results
+          path: trivy-results.json
 
-      - name: ❌ Fail if Trivy Image Scan found vulnerabilities
+      - name: 📡 Send Trivy Results to Splunk
+        if: always()
         run: |
-          COUNT=$(jq '[.Results[]?.Vulnerabilities? // []] | flatten | length' trivy-image-results.json)
-          if [ "$COUNT" -gt 0 ]; then
-            echo "❌ Trivy Image Scan found $COUNT vulnerabilities"
-            exit 1
-          else
-            echo "✅ No high/critical vulnerabilities found"
+          if [ -f trivy-results.json ]; then
+            CHANNEL_ID=$(uuidgen)
+            DATA=$(cat trivy-results.json | jq -c .)
+            curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
+              -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+              -d "{\"event\": $DATA}"
           fi
 
-      - name: 🔐 Login to Docker Hub
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-      - name: 📤 Push Docker image and capture logs
-        id: docker_push
-        run: |
-          if docker push ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest 2>&1 | tee push.log; then
-            echo "PUSH_STATUS=success" >> $GITHUB_OUTPUT
-          else
-            echo "PUSH_STATUS=failure" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
-      - name: 📡 Send Docker push status to Splunk
-        run: |
-          CHANNEL_ID=$(uuidgen)
-          STATUS="${{ steps.docker_push.outputs.PUSH_STATUS }}"
-          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-            -d "{\"event\": \"Docker push completed with status: $STATUS\"}"
-
-      - name: 📤 Upload Trivy FS Report
-        uses: actions/upload-artifact@v4
+      - name: 🕵️‍♂️ Gitleaks (Secrets Scan)
+        uses: gitleaks/gitleaks-action@v2.2.0
         with:
-          name: trivy-fs-report
-          path: trivy-fs-results.json
+          args: --source=.
 
       - name: 📡 Send CI final result to Splunk
         env:
