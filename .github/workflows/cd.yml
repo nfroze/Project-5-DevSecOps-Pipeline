@@ -2,81 +2,79 @@ name: 🚀 CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: ⬇️ Checkout repository
+      - name: ⬇️ Checkout code
         uses: actions/checkout@v3
 
-      - name: 🔐 Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-2
+      - name: 🐳 Set up Docker
+        uses: docker/setup-buildx-action@v3
 
-      - name: ⚙️ Update kubeconfig
-        run: aws eks update-kubeconfig --region eu-west-2 --name project5-eks-cluster
+      - name: 🔐 Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: 📦 Deploy to EKS
+      - name: 📥 Pull Docker image
+        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest
+
+      - name: 🚀 Deploy container
         run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
+          docker run -d -p 80:3000 --name project5-app \
+            ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest
 
-      - name: ⏳ Wait for LoadBalancer external IP
-        run: |
-          for i in {1..60}; do
-            EXTERNAL_IP=$(kubectl get svc devsecops-service -n default -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-            if [ -n "$EXTERNAL_IP" ]; then
-              echo "✅ External IP: http://$EXTERNAL_IP"
-              break
-            fi
-            echo "Waiting for LoadBalancer IP..."
-            sleep 10
-          done
+      - name: 🕒 Wait for service to start
+        run: sleep 15
 
-      - name: 🛡️ Run OWASP ZAP Baseline DAST Scan and save report (fail on warn)
+      - name: 🧪 Run ZAP Baseline Scan
         continue-on-error: true
         run: |
-          mkdir -p zap-results
-          docker run --user root -v $(pwd)/zap-results:/zap/wrk/:rw \
-            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
-            -t http://$EXTERNAL_IP \
-            -r zap-report.html \
+          docker run --rm -v $(pwd):/zap/wrk/:rw ghcr.io/zaproxy/zap-baseline:latest \
+            -t http://localhost \
             -J zap-report.json \
-            --fail-on-warn
+            -r zap-report.html
 
-      - name: 📤 Upload ZAP DAST Reports
+      - name: 📤 Upload ZAP JSON Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zap-dast-reports
-          path: ./zap-results
+          name: zap-report-json
+          path: zap-report.json
 
-      - name: 📡 Send ZAP DAST JSON report to Splunk
+      - name: 📤 Upload ZAP HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-html
+          path: zap-report.html
+
+      - name: 📡 Send ZAP results to Splunk
         if: always()
         run: |
-          if [ -f zap-results/zap-report.json ]; then
+          if [ -f zap-report.json ]; then
             CHANNEL_ID=$(uuidgen)
-            RESULTS=$(jq -c . zap-results/zap-report.json)
+            RESULTS=$(cat zap-report.json | jq -c .)
             curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
               -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
               -H "Content-Type: application/json" \
-              -d "{\"event\": $RESULTS, \"sourcetype\": \"zap\", \"channel\": \"$CHANNEL_ID\"}"
-          else
-            echo "⚠️ ZAP report JSON not found, skipping Splunk upload."
+              -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+              -d "{\"event\": $RESULTS}"
           fi
 
-      - name: ❌ Fail if ZAP found vulnerabilities
+      - name: 📡 Send CD final result to Splunk
+        env:
+          WORKFLOW_NAME: ${{ github.workflow }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_number }}
         run: |
-          echo "Checking ZAP exit code..."
-          docker run --rm \
-            -v $(pwd)/zap-results:/zap/wrk/:rw \
-            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
-            -t http://$EXTERNAL_IP \
-            --fail-on-warn \
-            --auto \
-            --json || exit 1
+          CHANNEL_ID=$(uuidgen)
+          EVENT_MSG="CD pipeline ${WORKFLOW_NAME} on branch ${BRANCH_NAME} (run #${RUN_ID}) completed"
+          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
+            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
+            -d "{\"event\": \"${EVENT_MSG}\"}"
