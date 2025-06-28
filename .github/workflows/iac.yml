@@ -3,25 +3,32 @@ name: IaC Security Scan
 on:
   push:
     branches: [main]
+    paths:
+      - '**/*.tf'
+      - '**/terraform/**'
   pull_request:
     branches: [main]
+    paths:
+      - '**/*.tf'
+      - '**/terraform/**'
 
 jobs:
   iac-security:
     runs-on: ubuntu-latest
+
     steps:
       - name: ⬇️ Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🔒 Install Checkov
         run: pip install checkov
 
-      - name: 🔍 Run Checkov and generate report
+      - name: 🔍 Run Checkov and generate JSON report
         run: |
           checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json
         continue-on-error: true
 
-      - name: 📤 Upload Checkov report to GitHub
+      - name: 📤 Upload Checkov JSON report
         if: always()
         uses: actions/upload-artifact@v4
         with:
