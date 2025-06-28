@@ -30,35 +30,20 @@ jobs:
       - name: 🕒 Wait for service to start
         run: sleep 15
 
-      - name: 🧪 Run ZAP Baseline Scan
-        continue-on-error: true
-        run: |
-          docker run --rm -v $(pwd):/zap/wrk/:rw owasp/zap2docker-weekly \
-            zap-baseline.py \
-            -t http://a1fc376fb666a42afa11820972d153a1-528790283.eu-west-2.elb.amazonaws.com/ \
-            -J zap-report.json \
-            -r zap-report.html
-
-      - name: 📤 Upload ZAP JSON Report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: 🧪 Run ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.12.0
         with:
-          name: zap-report-json
-          path: zap-report.json
-
-      - name: 📤 Upload ZAP HTML Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-report-html
-          path: zap-report.html
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target: http://a1fc376fb666a42afa11820972d153a1-528790283.eu-west-2.elb.amazonaws.com/
+          fail_action: false
+          cmd_options: '-a'
 
       - name: 📡 Send ZAP results to Splunk
         if: always()
         run: |
-          if [ -f zap-report.json ]; then
+          if [ -f zap_scan/report_json.json ]; then
             CHANNEL_ID=$(uuidgen)
-            RESULTS=$(cat zap-report.json | jq -c .)
+            RESULTS=$(cat zap_scan/report_json.json | jq -c .)
             curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
               -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
               -H "Content-Type: application/json" \
