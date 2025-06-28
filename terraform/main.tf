@@ -3,11 +3,15 @@ provider "aws" {
 }
 
 module "vpc" {
-  source = "./vpc"
-
-  vpc_cidr = var.vpc_cidr
-  azs      = var.azs
+  source         = "./vpc"
+  vpc_cidr       = var.vpc_cidr
+  azs            = var.azs
+  aws_region     = var.aws_region
+  public_subnets = var.public_subnets
+  private_subnets = var.private_subnets
+  vpc_name       = var.vpc_name
 }
+
 
 module "iam" {
   source = "./iam"

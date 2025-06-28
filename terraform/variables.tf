@@ -75,3 +75,18 @@ variable "kms_key_arn" {
   description = "KMS key ARN for encrypting secrets in EKS"
   type        = string
 }
+
+variable "public_subnets" {
+  description = "List of public subnet CIDRs"
+  type        = list(string)
+}
+
+variable "private_subnets" {
+  description = "List of private subnet CIDRs"
+  type        = list(string)
+}
+
+variable "vpc_name" {
+  description = "Name for the VPC"
+  type        = string
+}
