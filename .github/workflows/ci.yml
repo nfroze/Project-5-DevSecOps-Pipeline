@@ -90,7 +90,7 @@ jobs:
             echo "❌ Trivy found vulnerabilities"
             exit 1
           fi
-          if grep -q '"type":' semgrep-report.json 2>/dev/null; then
+          if jq '.results | length > 0' semgrep-report.json | grep true; then
             echo "❌ Semgrep found issues"
             exit 1
           fi
