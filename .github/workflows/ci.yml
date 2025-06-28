@@ -54,8 +54,7 @@ jobs:
               -H "Content-Type: application/json" \
               -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
               -d "{\"event\": $RESULTS}"
-          else
-            echo "⚠️ Semgrep report not found. Skipping Splunk upload."
+          fi
 
       - name: ❌ Fail if Semgrep found any issues
         run: |
