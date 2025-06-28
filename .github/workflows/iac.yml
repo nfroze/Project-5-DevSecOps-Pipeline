@@ -10,6 +10,9 @@ on:
     paths:
       - '**/*.tf'
 
+permissions:
+  contents: read
+
 jobs:
   iac-security:
     runs-on: ubuntu-latest

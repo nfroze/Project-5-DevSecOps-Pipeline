@@ -11,6 +11,10 @@ on:
     paths-ignore:
       - '**/*.tf'
       - '.github/workflows/iac.yml'
+
+permissions:
+  contents: read
+
 jobs:
   ci:
     runs-on: ubuntu-latest
