@@ -1,13 +1,13 @@
 name: 🚀 CD - Deploy and ZAP Scan
 
+permissions:
+  contents: read
+
 on:
   workflow_run:
     workflows: ["🛠️ Build and Push Docker Image"]
     types:
       - completed
-
-permissions:
-  contents: read
 
 jobs:
   deploy-and-scan:
