@@ -33,8 +33,10 @@ jobs:
       - name: 🧪 Run ZAP Baseline Scan
         continue-on-error: true
         run: |
-          docker run --rm -v $(pwd):/zap/wrk/:rw ghcr.io/zaproxy/zap-baseline:latest \
-            -t http://localhost \
+          docker run --rm \
+            -v $(pwd):/zap/wrk/:rw \
+            ghcr.io/zaproxy/zap-baseline:latest \
+            -t http://a1fc376fb666a42afa11820972d153a1-528790283.eu-west-2.elb.amazonaws.com/ \
             -J zap-report.json \
             -r zap-report.html
 
