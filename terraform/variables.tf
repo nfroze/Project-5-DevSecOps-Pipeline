@@ -31,7 +31,7 @@ variable "node_group_name" {
 variable "node_role_arn" {
   description = "IAM role ARN for the node group"
   type        = string
-  # No default (must be supplied)
+  default     = ""
 }
 
 variable "desired_capacity" {
@@ -67,31 +67,31 @@ variable "ami_type" {
 variable "ssh_key" {
   description = "Name of the EC2 Key Pair to enable SSH access"
   type        = string
-  # No default (must be supplied)
+  default     = ""
 }
 
 variable "source_security_group_ids" {
   description = "List of source security group IDs for SSH access"
   type        = list(string)
-  # No default (must be supplied)
+  default     = []
 }
 
 variable "kms_key_arn" {
   description = "KMS key ARN for encrypting secrets in EKS"
   type        = string
-  # No default (must be supplied)
+  default     = ""
 }
 
 variable "public_subnets" {
   description = "List of public subnet CIDRs"
   type        = list(string)
-  # No default (must be supplied)
+  default     = []
 }
 
 variable "private_subnets" {
   description = "List of private subnet CIDRs"
   type        = list(string)
-  # No default (must be supplied)
+  default     = []
 }
 
 variable "vpc_name" {
