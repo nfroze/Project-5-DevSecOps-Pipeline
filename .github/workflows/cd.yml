@@ -5,62 +5,60 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  id-token: write
+  issues: write  # Needed only if allow_issue_writing is true (disabled below)
+
 jobs:
   deploy:
+    name: 🚀 Deploy to EKS
     runs-on: ubuntu-latest
 
     steps:
-      - name: ⬇️ Checkout code
-        uses: actions/checkout@v3
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: 🐳 Set up Docker
-        uses: docker/setup-buildx-action@v3
+      - name: ☁️ Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<your-account-id>:role/<your-deploy-role>
+          aws-region: eu-west-2
 
-      - name: 🔐 Login to Docker Hub
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+      - name: ☸️ Update kubeconfig
+        run: aws eks update-kubeconfig --region eu-west-2 --name project5-eks
 
-      - name: 📥 Pull Docker image
-        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest
-
-      - name: 🚀 Deploy container
+      - name: 📦 Deploy to EKS
         run: |
-          docker run -d -p 80:3000 --name project5-app \
-            ${{ secrets.DOCKERHUB_USERNAME }}/project5-app:latest
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
 
-      - name: 🕒 Wait for service to start
-        run: sleep 15
+  zap_scan:
+    name: 🧪 ZAP Full Scan
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
 
       - name: 🧪 Run ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.12.0
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          target: http://a1fc376fb666a42afa11820972d153a1-528790283.eu-west-2.elb.amazonaws.com/
-          fail_action: false
-          cmd_options: '-a'
+          target: 'http://a1fc376fb666a42afa11820972d153a1-528790283.eu-west-2.elb.amazonaws.com/'
+          fail_action: false  # Don't fail pipeline even if warnings exist
+          allow_issue_writing: false  # Disable GitHub Issue creation
 
-      - name: 📡 Send ZAP results to Splunk
+      - name: 📤 Upload ZAP HTML Report
         if: always()
-        run: |
-          if [ -f zap_scan/report_json.json ]; then
-            CHANNEL_ID=$(uuidgen)
-            RESULTS=$(cat zap_scan/report_json.json | jq -c .)
-            curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-              -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-              -d "{\"event\": $RESULTS}"
-          fi
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-html
+          path: report_html.html
 
-      - name: 📡 Send CD final result to Splunk
-        env:
-          WORKFLOW_NAME: ${{ github.workflow }}
-          BRANCH_NAME: ${{ github.ref_name }}
-          RUN_ID: ${{ github.run_number }}
-        run: |
-          CHANNEL_ID=$(uuidgen)
-          EVENT_MSG="CD pipeline ${WORKFLOW_NAME} on branch ${BRANCH_NAME} (run #${RUN_ID}) completed"
-          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-            -d "{\"event\": \"${EVENT_MSG}\"}"
+      - name: 📤 Upload ZAP JSON Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-json
+          path: report_json.json
