@@ -68,13 +68,3 @@ jobs:
 
       - name: Push image to Docker Hub
         run: docker push $IMAGE_NAME:$IMAGE_TAG
-
-      - name: Save Image Tag
-        run: echo "${{ env.IMAGE_TAG }}" > image-tag.txt
-
-      - name: Upload Image Tag Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: image-tag
-          path: image-tag.txt
-          
