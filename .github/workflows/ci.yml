@@ -8,7 +8,6 @@ on:
 
 jobs:
   ci:
-    name: Security Scans (Trivy, Semgrep, Gitleaks)
     runs-on: ubuntu-latest
 
     steps:
@@ -40,10 +39,15 @@ jobs:
           name: semgrep-report
           path: semgrep-report.json
 
+      - name: Install Gitleaks
+        run: |
+          wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz
+          tar -xzf gitleaks.tar.gz
+          chmod +x gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+
       - name: Run Gitleaks (JSON Output)
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          args: detect --source=. --report-format=json --report-path=gitleaks-report.json
+        run: gitleaks detect --source=. --report-format=json --report-path=gitleaks-report.json
 
       - name: Upload Gitleaks JSON Report
         uses: actions/upload-artifact@v4
