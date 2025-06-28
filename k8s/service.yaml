@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: devsecops-service
+  name: project5-service
   namespace: project5
 spec:
   selector:
-    app: devsecops-app
+    app: project5-app
   ports:
     - protocol: TCP
       port: 80
