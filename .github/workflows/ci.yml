@@ -67,9 +67,11 @@ jobs:
           fi
 
       - name: 🕵️‍♂️ Run Gitleaks (Secrets Scan)
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          args: "detect --source=. --report-path=gitleaks-report.json --report-format=json"
+        run: |
+          docker run --rm -v $(pwd):/path zricethezav/gitleaks:latest detect \
+            --source=/path \
+            --report-path=/path/gitleaks-report.json \
+            --report-format=json
 
       - name: 📤 Upload Gitleaks Report
         uses: actions/upload-artifact@v4
