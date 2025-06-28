@@ -7,86 +7,55 @@ on:
   pull_request:
 
 jobs:
-  security-scans:
+  semgrep:
+    name: Static Code Analysis - Semgrep
     runs-on: ubuntu-latest
-
     steps:
-      - name: ⬇️ Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: 🧠 Semgrep (SAST Scan)
+      - name: Run Semgrep
         uses: returntocorp/semgrep-action@v1
         with:
-          config: p/default
+          config: >-
+            p/ci,p/security-audit,p/secrets
+        env:
+          SEMGREP_RULES: >-
+            p/ci,p/security-audit,p/secrets
 
-      - name: 📤 Upload Semgrep Report
-        if: always()
-        uses: actions/upload-artifact@v4
+  gitleaks:
+    name: Secret Scan - Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
         with:
-          name: semgrep-results
-          path: semgrep.sarif
+          args: "--verbose --redact --report-format sarif --report-path gitleaks-report.sarif"
 
-      - name: 📡 Send Semgrep Results to Splunk
-        if: always()
-        run: |
-          if [ -f semgrep.sarif ]; then
-            CHANNEL_ID=$(uuidgen)
-            DATA=$(cat semgrep.sarif | jq -c .)
-            curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-              -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-              -d "{\"event\": $DATA}"
-          fi
-
-      - name: 🛡️ Checkov (Terraform Scan)
-        uses: bridgecrewio/checkov-action@master
+      - name: Upload Gitleaks SARIF
+        uses: github/codeql-action/upload-sarif@v3
         with:
-          directory: .
-          framework: terraform
+          sarif_file: gitleaks-report.sarif
 
-      - name: 🔍 Trivy Image Scan
+  trivy:
+    name: Dependency Scan - Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: nfroze/project5-app:latest
-          format: json
-          output: trivy-results.json
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
 
-      - name: 📤 Upload Trivy Report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
         with:
-          name: trivy-results
-          path: trivy-results.json
-
-      - name: 📡 Send Trivy Results to Splunk
-        if: always()
-        run: |
-          if [ -f trivy-results.json ]; then
-            CHANNEL_ID=$(uuidgen)
-            DATA=$(cat trivy-results.json | jq -c .)
-            curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-              -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-              -d "{\"event\": $DATA}"
-          fi
-
-      - name: 🕵️‍♂️ Gitleaks (Secrets Scan)
-        uses: gitleaks/gitleaks-action@v2.2.0
-        with:
-          args: --source=.
-
-      - name: 📡 Send CI final result to Splunk
-        env:
-          WORKFLOW_NAME: ${{ github.workflow }}
-          BRANCH_NAME: ${{ github.ref_name }}
-          RUN_ID: ${{ github.run_number }}
-        run: |
-          CHANNEL_ID=$(uuidgen)
-          EVENT_MSG="CI pipeline ${WORKFLOW_NAME} on branch ${BRANCH_NAME} (run #${RUN_ID}) completed"
-          curl -k https://prd-p-44h4s.splunkcloud.com:8088/services/collector \
-            -H "Authorization: Splunk ${{ secrets.SPLUNK_HEC_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -H "X-Splunk-Request-Channel: $CHANNEL_ID" \
-            -d "{\"event\": \"${EVENT_MSG}\"}"
+          sarif_file: trivy-results.sarif
