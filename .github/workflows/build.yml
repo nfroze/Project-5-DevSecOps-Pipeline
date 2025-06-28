@@ -29,16 +29,22 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build Docker image
-        run: |
-          docker build -t $IMAGE_NAME:$IMAGE_TAG .
+        run: docker build -t $IMAGE_NAME:$IMAGE_TAG .
 
-      - name: Run Trivy image scan
-        uses: aquasecurity/trivy-action@master
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Run Trivy image scan and generate JSON
+        run: |
+          trivy image --ignore-unfixed --format json -o trivy-report.json $IMAGE_NAME:$IMAGE_TAG
+
+      - name: Upload Trivy JSON Report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-          format: json
-          output: trivy-report.json
-          ignore-unfixed: true
+          name: trivy-report
+          path: trivy-report.json
 
       - name: Send Trivy JSON report to Splunk
         if: always()
@@ -61,8 +67,7 @@ jobs:
           fi
 
       - name: Push image to Docker Hub
-        run: |
-          docker push $IMAGE_NAME:$IMAGE_TAG
+        run: docker push $IMAGE_NAME:$IMAGE_TAG
 
       - name: Save Image Tag
         run: echo "${{ env.IMAGE_TAG }}" > image-tag.txt
