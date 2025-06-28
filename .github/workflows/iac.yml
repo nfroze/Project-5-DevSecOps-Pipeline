@@ -26,7 +26,7 @@ jobs:
 
       - name: 🔍 Run Checkov and generate JSON report
         run: |
-          checkov -d . --config-file .checkov.yml --skip-path .terraform --output json --output-file-path checkov-report.json
+          checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json
         continue-on-error: true
 
       - name: 📤 Upload Checkov JSON report
