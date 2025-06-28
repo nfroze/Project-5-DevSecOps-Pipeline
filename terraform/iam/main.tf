@@ -1,8 +1,5 @@
-# Data block for account ID (used to scope any future inline policies)
-data "aws_caller_identity" "current" {}
-
 resource "aws_iam_role" "eks_cluster_role" {
-  name = "project5-eks-cluster-role"
+  name = "${var.cluster_name}-cluster-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -16,17 +13,13 @@ resource "aws_iam_role" "eks_cluster_role" {
   })
 }
 
-# checkov:skip=CKV_AWS_160: No IAM users defined — policies only attached to roles
-# checkov:skip=CKV_AWS_39: Using AWS-managed policy for demo simplicity
-# checkov:skip=CKV_AWS_259: AWS-managed policy includes broad permissions
-# checkov:skip=CKV_AWS_111: Using AWS-managed policy that cannot be modified
-resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+resource "aws_iam_role_policy_attachment" "eks_AmazonEKSClusterPolicy" {
   role       = aws_iam_role.eks_cluster_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
 resource "aws_iam_role" "eks_node_role" {
-  name = "project5-eks-node-role"
+  name = "${var.cluster_name}-node-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -40,31 +33,17 @@ resource "aws_iam_role" "eks_node_role" {
   })
 }
 
-# 🟨 Node IAM policy attachments (OK for demo; scoped to role)
-
-# checkov:skip=CKV_AWS_160: No IAM users defined — policies only attached to roles
-# checkov:skip=CKV_AWS_39: Using AWS-managed policy for demo simplicity
-# checkov:skip=CKV_AWS_259: AWS-managed policy includes broad permissions
-# checkov:skip=CKV_AWS_111: Using AWS-managed policy that cannot be modified
-resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
+resource "aws_iam_role_policy_attachment" "eks_AmazonEKSWorkerNodePolicy" {
   role       = aws_iam_role.eks_node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
 }
 
-# checkov:skip=CKV_AWS_160
-# checkov:skip=CKV_AWS_39
-# checkov:skip=CKV_AWS_259
-# checkov:skip=CKV_AWS_111
-resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
+resource "aws_iam_role_policy_attachment" "eks_AmazonEKS_CNI_Policy" {
   role       = aws_iam_role.eks_node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
 
-# checkov:skip=CKV_AWS_160
-# checkov:skip=CKV_AWS_39
-# checkov:skip=CKV_AWS_259
-# checkov:skip=CKV_AWS_111
-resource "aws_iam_role_policy_attachment" "ecr_readonly" {
+resource "aws_iam_role_policy_attachment" "eks_ECR_ReadOnly" {
   role       = aws_iam_role.eks_node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }

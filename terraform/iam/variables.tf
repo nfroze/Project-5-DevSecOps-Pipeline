@@ -1,1 +1,4 @@
-# No inputs needed for this IAM module at the moment
+variable "cluster_name" {
+  description = "EKS cluster name (used for naming IAM roles)"
+  type        = string
+}
