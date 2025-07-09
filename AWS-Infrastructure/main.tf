@@ -1,4 +1,10 @@
 terraform {
+  backend "s3" {
+    bucket = "project5-terraform-state"
+    key    = "terraform.tfstate"
+    region = "eu-west-2"
+  }
+
   required_version = ">= 1.3.0"
 
   required_providers {
@@ -22,8 +28,8 @@ module "iam" {
 }
 
 module "eks" {
-  source = "./modules/eks"
-  vpc_id = module.vpc.vpc_id
+  source             = "./modules/eks"
+  vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
   public_subnet_ids  = module.vpc.public_subnet_ids
   cluster_role_arn   = module.iam.eks_cluster_role_arn
