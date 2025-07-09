@@ -116,7 +116,7 @@ resource "aws_iam_role_policy_attachment" "vpc_flow_log" {
 
 resource "aws_flow_log" "vpc_log" {
   log_destination_type = "cloud-watch-logs"
-  log_group_name       = aws_cloudwatch_log_group.vpc_logs.name
+  log_destination      = aws_cloudwatch_log_group.vpc_logs.arn
   iam_role_arn         = aws_iam_role.vpc_flow_log.arn
   vpc_id               = aws_vpc.main.id
   traffic_type         = "ALL"
