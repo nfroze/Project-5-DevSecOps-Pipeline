@@ -23,8 +23,6 @@ resource "aws_eks_cluster" "this" {
   tags = {
     Name = "project5-eks-cluster"
   }
-
-  depends_on = [aws_iam_role_policy_attachment.eks_cluster_policy]
 }
 
 resource "aws_eks_node_group" "default" {
