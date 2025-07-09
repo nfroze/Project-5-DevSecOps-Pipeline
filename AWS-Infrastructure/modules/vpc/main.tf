@@ -1,6 +1,6 @@
 resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/16"
-  enable_dns_support = true
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
   enable_dns_hostnames = true
 
   tags = {
@@ -17,9 +17,9 @@ resource "aws_internet_gateway" "igw" {
 }
 
 resource "aws_subnet" "public" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.0.0/24"
-  availability_zone = "eu-west-2a"
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.0.0/24"
+  availability_zone       = "eu-west-2a"
   map_public_ip_on_launch = true
 
   tags = {
@@ -28,13 +28,17 @@ resource "aws_subnet" "public" {
 }
 
 resource "aws_subnet" "private" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.3.0/24"
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.3.0/24"
   availability_zone = "eu-west-2b"
 
   tags = {
     Name = "project5-private-subnet-1"
   }
+}
+
+resource "aws_eip" "nat" {
+  domain = "vpc"
 }
 
 resource "aws_nat_gateway" "nat" {
@@ -46,10 +50,6 @@ resource "aws_nat_gateway" "nat" {
   }
 
   depends_on = [aws_internet_gateway.igw]
-}
-
-resource "aws_eip" "nat" {
-  domain = "vpc"
 }
 
 resource "aws_route_table" "public" {
@@ -86,6 +86,40 @@ resource "aws_route_table" "private" {
 resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private.id
   route_table_id = aws_route_table.private.id
+}
+
+# ✅ Flow Logs Resources (Fixes CKV_AWS_189)
+resource "aws_cloudwatch_log_group" "vpc_logs" {
+  name              = "/aws/vpc/project5"
+  retention_in_days = 30
+}
+
+resource "aws_iam_role" "vpc_flow_log" {
+  name = "vpc-flow-log-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "vpc-flow-logs.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "vpc_flow_log" {
+  role       = aws_iam_role.vpc_flow_log.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+resource "aws_flow_log" "vpc_log" {
+  log_destination_type = "cloud-watch-logs"
+  log_group_name       = aws_cloudwatch_log_group.vpc_logs.name
+  iam_role_arn         = aws_iam_role.vpc_flow_log.arn
+  vpc_id               = aws_vpc.main.id
+  traffic_type         = "ALL"
 }
 
 output "vpc_id" {
