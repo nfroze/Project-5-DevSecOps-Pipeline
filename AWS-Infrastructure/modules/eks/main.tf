@@ -1,19 +1,23 @@
 variable "vpc_id" {}
+
 variable "private_subnet_ids" {
   type = list(string)
 }
+
 variable "public_subnet_ids" {
   type = list(string)
 }
+
 variable "cluster_role_arn" {}
 variable "node_role_arn" {}
 
 resource "aws_eks_cluster" "this" {
   name     = "project5-eks-cluster"
   role_arn = var.cluster_role_arn
+  version  = "1.32" # 👈 EKS version compatible with AL2 AMI
 
   vpc_config {
-    subnet_ids = concat(var.private_subnet_ids, var.public_subnet_ids)
+    subnet_ids              = concat(var.private_subnet_ids, var.public_subnet_ids)
     endpoint_private_access = true
     endpoint_public_access  = true
   }
@@ -31,8 +35,8 @@ resource "aws_eks_node_group" "default" {
   node_role_arn   = var.node_role_arn
   subnet_ids      = var.private_subnet_ids
 
-  instance_types  = ["t3.medium"]
-  ami_type        = "AL2_x86_64"
+  instance_types = ["t3.medium"]
+  ami_type       = "AL2_x86_64"
 
   scaling_config {
     desired_size = 1
