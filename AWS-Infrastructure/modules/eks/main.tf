@@ -30,7 +30,10 @@ resource "aws_eks_node_group" "default" {
   node_group_name = "project5-ng"
   node_role_arn   = var.node_role_arn
   subnet_ids      = var.private_subnet_ids
+
   instance_types  = ["t3.medium"]
+  ami_type        = "AL2_x86_64"
+
   scaling_config {
     desired_size = 1
     max_size     = 2
@@ -42,7 +45,7 @@ resource "aws_eks_node_group" "default" {
   }
 
   depends_on = [
-    aws_eks_cluster.this,
+    aws_eks_cluster.this
   ]
 }
 
