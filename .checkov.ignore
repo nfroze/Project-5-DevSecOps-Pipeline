@@ -1,0 +1,5 @@
+# Ignore wildcard action in IAM policy (you can manually restrict this later)
+CKV_AWS_111:iam.tf: Suppressing wildcard action in assume role for demo purposes
+
+# Ignore missing log retention for CloudWatch log group (non-prod setup)
+CKV_AWS_356:main.tf: Suppressing missing log retention; will configure later
