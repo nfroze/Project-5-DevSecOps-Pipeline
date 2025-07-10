@@ -14,7 +14,7 @@ variable "node_role_arn" {}
 resource "aws_eks_cluster" "this" {
   name     = "project5-eks-cluster"
   role_arn = var.cluster_role_arn
-  version  = "1.32" # 👈 EKS version compatible with AL2 AMI
+  version  = "1.32"
 
   vpc_config {
     subnet_ids              = concat(var.private_subnet_ids, var.public_subnet_ids)
