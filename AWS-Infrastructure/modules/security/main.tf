@@ -43,12 +43,13 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 # Create Lambda deployment packages
 resource "null_resource" "lambda_packages" {
   provisioner "local-exec" {
+    interpreter = ["PowerShell", "-Command"]
     command = <<EOF
 # Create lambda directory
-mkdir -p ${path.module}/lambda
+New-Item -ItemType Directory -Force -Path ${path.module}/lambda
 
 # Create GuardDuty Lambda
-cat > ${path.module}/lambda/guardduty_handler.py << 'GUARDDUTY'
+@'
 import json
 import os
 import urllib3
@@ -80,10 +81,10 @@ def handler(event, context):
         'statusCode': response.status,
         'body': response.data.decode('utf-8')
     }
-GUARDDUTY
+'@ | Out-File -Encoding UTF8 ${path.module}/lambda/guardduty_handler.py
 
 # Create CloudWatch Lambda
-cat > ${path.module}/lambda/cloudwatch_handler.py << 'CLOUDWATCH'
+@'
 import base64
 import gzip
 import json
@@ -123,12 +124,11 @@ def handler(event, context):
         )
     
     return {'statusCode': 200}
-CLOUDWATCH
+'@ | Out-File -Encoding UTF8 ${path.module}/lambda/cloudwatch_handler.py
 
 # Create zip files
-cd ${path.module}/lambda
-zip guardduty-to-splunk.zip guardduty_handler.py
-zip cloudwatch-to-splunk.zip cloudwatch_handler.py
+Compress-Archive -Path ${path.module}/lambda/guardduty_handler.py -DestinationPath ${path.module}/lambda/guardduty-to-splunk.zip -Force
+Compress-Archive -Path ${path.module}/lambda/cloudwatch_handler.py -DestinationPath ${path.module}/lambda/cloudwatch-to-splunk.zip -Force
 EOF
   }
 }
