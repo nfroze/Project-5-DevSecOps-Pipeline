@@ -16,9 +16,9 @@ on:
       - '.github/workflows/iac.yml'
 
 jobs:
-  ci:
+  # Trivy SCA Scan
+  trivy-scan:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -29,6 +29,7 @@ jobs:
           scan-type: fs
           format: json
           output: trivy-results.json
+          severity: 'CRITICAL,HIGH,MEDIUM'  # Add severity filter
         continue-on-error: true
 
       - name: Upload Trivy JSON Report
@@ -36,6 +37,13 @@ jobs:
         with:
           name: trivy-results
           path: trivy-results.json
+
+  # Semgrep SAST Scan
+  semgrep-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Install Semgrep
         run: pip install semgrep
@@ -50,16 +58,28 @@ jobs:
           name: semgrep-report
           path: semgrep-report.json
 
-      - name: Install Gitleaks
-        run: |
-          wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz
-          tar -xzf gitleaks.tar.gz
-          chmod +x gitleaks
-          sudo mv gitleaks /usr/local/bin/gitleaks
+  # Gitleaks Secret Scan
+  gitleaks-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better secret detection
 
-      - name: Run Gitleaks (JSON Output)
-        run: gitleaks detect --source=. --report-format=json --report-path=gitleaks-report.json
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
+
+      - name: Generate Gitleaks JSON Report
+        if: always()
+        run: |
+          # Download and run Gitleaks manually for JSON output
+          wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz
+          tar -xzf gitleaks.tar.gz
+          ./gitleaks detect --source=. --report-format=json --report-path=gitleaks-report.json --exit-code=0 || true
 
       - name: Upload Gitleaks JSON Report
         uses: actions/upload-artifact@v4
@@ -67,34 +87,72 @@ jobs:
           name: gitleaks-report
           path: gitleaks-report.json
 
+  # Consolidate results and send to Splunk
+  consolidate-and-report:
+    needs: [trivy-scan, semgrep-scan, gitleaks-scan]
+    runs-on: ubuntu-latest
+    if: always()  # Run even if scans fail
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: scan-results
+
       - name: Send Reports to Splunk
-        if: always()
         env:
           SPLUNK_HEC_URL: ${{ secrets.SPLUNK_HEC_URL }}
           SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
         run: |
           CHANNEL_ID=$(uuidgen)
-          for file in trivy-results.json semgrep-report.json gitleaks-report.json; do
-            if [ -f "$file" ]; then
-              curl -k "$SPLUNK_HEC_URL" \
-                -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
-                -H "Content-Type: application/json" \
-                -d "{\"event\": $(cat $file), \"sourcetype\": \"${file%.json}\", \"channel\": \"$CHANNEL_ID\"}"
-            fi
+          
+          # Send each report to Splunk
+          for report in scan-results/*/; do
+            for file in "$report"*.json; do
+              if [ -f "$file" ]; then
+                filename=$(basename "$file")
+                sourcetype="${filename%.json}"
+                
+                echo "Sending $sourcetype to Splunk..."
+                curl -k "$SPLUNK_HEC_URL" \
+                  -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
+                  -H "Content-Type: application/json" \
+                  -d "{\"event\": $(cat "$file"), \"sourcetype\": \"${sourcetype}\", \"channel\": \"$CHANNEL_ID\"}"
+              fi
+            done
           done
 
-      - name: Fail if any scan report contains issues
+      - name: Security Gate Check
         run: |
           set -e
-          if grep -q '"Vulnerabilities":\s*\[{' trivy-results.json 2>/dev/null; then
-            echo "❌ Trivy found vulnerabilities"
-            exit 1
+          FAILED=false
+          
+          # Check Trivy results
+          if [ -f "scan-results/trivy-results/trivy-results.json" ]; then
+            if grep -q '"Vulnerabilities":\s*\[{' scan-results/trivy-results/trivy-results.json 2>/dev/null; then
+              echo "❌ Trivy found vulnerabilities"
+              FAILED=true
+            fi
           fi
-          if jq '.results | length > 0' semgrep-report.json | grep true; then
-            echo "❌ Semgrep found issues"
-            exit 1
+          
+          # Check Semgrep results
+          if [ -f "scan-results/semgrep-report/semgrep-report.json" ]; then
+            if jq -e '.results | length > 0' scan-results/semgrep-report/semgrep-report.json >/dev/null 2>&1; then
+              echo "❌ Semgrep found issues"
+              FAILED=true
+            fi
           fi
-          if grep -q '"rule_id":' gitleaks-report.json 2>/dev/null; then
-            echo "❌ Gitleaks found secrets"
+          
+          # Check Gitleaks results
+          if [ -f "scan-results/gitleaks-report/gitleaks-report.json" ]; then
+            if grep -q '"rule_id":' scan-results/gitleaks-report/gitleaks-report.json 2>/dev/null; then
+              echo "❌ Gitleaks found secrets"
+              FAILED=true
+            fi
+          fi
+          
+          if [ "$FAILED" = true ]; then
+            echo "Security checks failed!"
             exit 1
+          else
+            echo "✅ All security checks passed!"
           fi

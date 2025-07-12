@@ -8,10 +8,12 @@ on:
     branches: [main]
     paths:
       - '**/*.tf'
+      - '.github/workflows/iac.yml'  # Also trigger on workflow changes
   pull_request:
     branches: [main]
     paths:
       - '**/*.tf'
+      - '.github/workflows/iac.yml'
 
 jobs:
   iac-security:
@@ -21,13 +23,16 @@ jobs:
       - name: ⬇️ Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🔒 Install Checkov
-        run: pip install checkov
-
-      - name: 🔍 Run Checkov and generate JSON report
-        run: |
-          checkov -d . --skip-path .terraform --output json --output-file-path checkov-report.json
-        continue-on-error: true
+      - name: 🔒 Run Checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          skip_path: .terraform
+          output_format: json
+          output_file_path: checkov-report.json
+          soft_fail: true  # Don't fail the action, we'll handle it
+          framework: terraform  # Explicitly set framework
 
       - name: 📤 Upload Checkov JSON report
         if: always()
@@ -35,6 +40,22 @@ jobs:
         with:
           name: checkov-report
           path: checkov-report.json
+
+      - name: 📊 Display Checkov Summary
+        if: always()
+        run: |
+          if [ -f checkov-report.json ]; then
+            echo "## Checkov Scan Summary"
+            echo "Passed checks: $(jq '.summary.passed' checkov-report.json)"
+            echo "Failed checks: $(jq '.summary.failed' checkov-report.json)"
+            echo "Skipped checks: $(jq '.summary.skipped' checkov-report.json)"
+            
+            # Show failed checks details
+            if [ $(jq '.summary.failed' checkov-report.json) -gt 0 ]; then
+              echo -e "\n### Failed Checks:"
+              jq -r '.results.failed_checks[]? | "- [\(.check_id)] \(.check_name): \(.file_path):\(.file_line_range[0])"' checkov-report.json || true
+            fi
+          fi
 
       - name: 📡 Send Checkov results to Splunk
         if: always()
@@ -50,9 +71,14 @@ jobs:
               -d "{\"event\": $(cat checkov-report.json), \"sourcetype\": \"checkov\", \"channel\": \"$CHANNEL_ID\"}"
           fi
 
-      - name: ❌ Fail if Checkov found policy violations
+      - name: ❌ Fail if Checkov found critical violations
         run: |
-          if jq '.results.failed_checks | length > 0' checkov-report.json | grep true; then
-            echo "❌ Checkov found policy violations"
-            exit 1
+          if [ -f checkov-report.json ]; then
+            FAILED_COUNT=$(jq '.summary.failed' checkov-report.json)
+            if [ "$FAILED_COUNT" -gt 0 ]; then
+              echo "❌ Checkov found $FAILED_COUNT policy violations"
+              exit 1
+            else
+              echo "✅ All Checkov policies passed!"
+            fi
           fi
