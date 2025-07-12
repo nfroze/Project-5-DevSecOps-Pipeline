@@ -11,6 +11,21 @@ variable "public_subnet_ids" {
 variable "cluster_role_arn" {}
 variable "node_role_arn" {}
 
+# KMS key for EKS encryption
+resource "aws_kms_key" "eks" {
+  description             = "EKS cluster encryption key"
+  deletion_window_in_days = 10
+
+  tags = {
+    Name = "project5-eks-kms"
+  }
+}
+
+resource "aws_kms_alias" "eks" {
+  name          = "alias/project5-eks"
+  target_key_id = aws_kms_key.eks.key_id
+}
+
 resource "aws_eks_cluster" "this" {
   name     = "project5-eks-cluster"
   role_arn = var.cluster_role_arn
@@ -19,10 +34,19 @@ resource "aws_eks_cluster" "this" {
   vpc_config {
     subnet_ids              = concat(var.private_subnet_ids, var.public_subnet_ids)
     endpoint_private_access = true
-    endpoint_public_access  = true
+    endpoint_public_access  = true  # Required for GitHub Actions; in production would restrict with public_access_cidrs
   }
 
-  enabled_cluster_log_types = ["api", "audit", "authenticator"]
+  # Encryption for secrets
+  encryption_config {
+    provider {
+      key_arn = aws_kms_key.eks.arn
+    }
+    resources = ["secrets"]
+  }
+
+  # Enable all log types
+  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   tags = {
     Name = "project5-eks-cluster"
