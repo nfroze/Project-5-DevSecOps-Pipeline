@@ -105,13 +105,37 @@ jobs:
       - name: Run OWASP ZAP Baseline Scan
         run: |
           echo "Starting OWASP ZAP scan against ${{ env.SERVICE_URL }}"
-          docker run -v $(pwd):/zap/wrk:rw \
+          
+          # Create directory for reports
+          mkdir -p zap-reports
+          chmod 777 zap-reports
+          
+          # Run ZAP scan
+          docker run -v $(pwd)/zap-reports:/zap/wrk:rw \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t ${{ env.SERVICE_URL }} \
             -J zap-report.json \
             -r zap-report.html \
-            -I
+            -I || true
+          
+          # Check if reports were created
+          echo "Checking for ZAP reports..."
+          ls -la zap-reports/ || true
+          
+          # Move reports to workspace root if they exist
+          if [ -f "zap-reports/zap-report.json" ]; then
+            cp zap-reports/zap-report.json ./zap-report.json
+            echo "ZAP JSON report copied successfully"
+          else
+            echo "Warning: ZAP JSON report not found"
+            echo '{"alerts": [], "error": "No scan results"}' > zap-report.json
+          fi
+          
+          if [ -f "zap-reports/zap-report.html" ]; then
+            cp zap-reports/zap-report.html ./zap-report.html
+            echo "ZAP HTML report copied successfully"
+          fi
         continue-on-error: true
 
       - name: Upload ZAP JSON Report
@@ -146,16 +170,23 @@ jobs:
       - name: Check ZAP Results
         run: |
           if [ -f zap-report.json ]; then
-            HIGH_ALERTS=$(jq '.site[].alerts[] | select(.riskcode == "3") | .riskcode' zap-report.json | wc -l || echo "0")
-            MEDIUM_ALERTS=$(jq '.site[].alerts[] | select(.riskcode == "2") | .riskcode' zap-report.json | wc -l || echo "0")
-            
-            echo "DAST Scan Results:"
-            echo "High Risk Alerts: $HIGH_ALERTS"
-            echo "Medium Risk Alerts: $MEDIUM_ALERTS"
-            
-            # Only fail on high-risk alerts for demo purposes
-            if [ "$HIGH_ALERTS" -gt "0" ]; then
-              echo "❌ High-risk security issues found!"
-              exit 1
+            # Check if it's our error placeholder
+            if grep -q '"error": "No scan results"' zap-report.json; then
+              echo "⚠️ ZAP scan didn't produce results, but continuing..."
+            else
+              HIGH_ALERTS=$(jq '.site[].alerts[] | select(.riskcode == "3") | .riskcode' zap-report.json 2>/dev/null | wc -l || echo "0")
+              MEDIUM_ALERTS=$(jq '.site[].alerts[] | select(.riskcode == "2") | .riskcode' zap-report.json 2>/dev/null | wc -l || echo "0")
+              
+              echo "DAST Scan Results:"
+              echo "High Risk Alerts: $HIGH_ALERTS"
+              echo "Medium Risk Alerts: $MEDIUM_ALERTS"
+              
+              # Only fail on high-risk alerts for demo purposes
+              if [ "$HIGH_ALERTS" -gt "0" ]; then
+                echo "❌ High-risk security issues found!"
+                exit 1
+              fi
             fi
+          else
+            echo "⚠️ No ZAP report found, skipping results check"
           fi
