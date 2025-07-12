@@ -2,6 +2,15 @@
 
 This document explains security findings from our scanning tools and the rationale for our design decisions.
 
+## Container Vulnerabilities - Accepted Risks
+
+### Known CVEs
+- **CVE-2024-21538 (cross-spawn@7.0.3)**: Regular Expression Denial of Service (ReDoS) vulnerability in npm's internal dependencies. This is NOT in our application code but in npm's bundled tooling. Risk is minimal as:
+  - Container doesn't expose npm commands to external input
+  - Attack requires crafted malicious input to npm CLI
+  - Vulnerability is in build tooling, not runtime application
+  - Fix requires updating Node.js base image to include newer npm version
+
 ## Checkov Findings - Accepted Risks
 
 ### Lambda Functions (Low Risk)

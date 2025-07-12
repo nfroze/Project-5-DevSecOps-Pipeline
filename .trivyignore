@@ -1,0 +1,6 @@
+# Trivy Ignore File
+# Format: CVE-ID
+
+# ReDoS in npm's internal cross-spawn dependency
+# Not in application code - see SECURITY_EXCEPTIONS.md
+CVE-2024-21538
