@@ -40,40 +40,6 @@ jobs:
         run: |
           kubectl set image deployment/project5-deployment project5-app=nfroze/project5-app:${{ env.IMAGE_TAG }} -n project5
 
-      - name: Install Trivy
-        run: |
-          sudo apt-get update
-          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install trivy -y
-
-      - name: Scan running container in EKS (by image)
-        run: |
-          IMAGE_ID="nfroze/project5-app:${{ env.IMAGE_TAG }}"
-          trivy image --format json --output trivy-deploy-report.json $IMAGE_ID
-        continue-on-error: true
-
-      - name: Upload Trivy JSON Report (CD)
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-deploy-report
-          path: trivy-deploy-report.json
-
-      - name: Send Trivy Report to Splunk
-        if: always()
-        env:
-          SPLUNK_HEC_URL: ${{ secrets.SPLUNK_HEC_URL }}
-          SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
-        run: |
-          if [ -f trivy-deploy-report.json ]; then
-            curl -k "$SPLUNK_HEC_URL" \
-              -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"event\": $(cat trivy-deploy-report.json), \"sourcetype\": \"trivy-deploy\", \"channel\": \"cd-${GITHUB_RUN_ID}\"}"
-          fi
-
       - name: Wait for deployment to be ready
         run: |
           echo "Waiting for deployment to be ready..."
