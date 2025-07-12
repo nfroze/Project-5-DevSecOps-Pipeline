@@ -61,7 +61,7 @@ jobs:
           name: trivy-deploy-report
           path: trivy-deploy-report.json
 
-      - name: Send Report to Splunk
+      - name: Send Trivy Report to Splunk
         if: always()
         env:
           SPLUNK_HEC_URL: ${{ secrets.SPLUNK_HEC_URL }}
@@ -72,4 +72,90 @@ jobs:
               -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
               -H "Content-Type: application/json" \
               -d "{\"event\": $(cat trivy-deploy-report.json), \"sourcetype\": \"trivy-deploy\", \"channel\": \"cd-${GITHUB_RUN_ID}\"}"
+          fi
+
+      - name: Wait for deployment to be ready
+        run: |
+          echo "Waiting for deployment to be ready..."
+          kubectl wait --for=condition=available --timeout=300s deployment/project5-deployment -n project5
+          echo "Deployment is ready!"
+
+      - name: Get LoadBalancer URL
+        id: get-url
+        run: |
+          echo "Getting LoadBalancer URL..."
+          # Wait for LoadBalancer to be assigned
+          for i in {1..30}; do
+            SERVICE_URL=$(kubectl get svc project5-service -n project5 -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+            if [ -n "$SERVICE_URL" ]; then
+              break
+            fi
+            echo "Waiting for LoadBalancer... (attempt $i/30)"
+            sleep 10
+          done
+          
+          if [ -z "$SERVICE_URL" ]; then
+            echo "LoadBalancer URL not found after 5 minutes"
+            exit 1
+          fi
+          
+          echo "SERVICE_URL=http://${SERVICE_URL}" >> $GITHUB_ENV
+          echo "LoadBalancer URL: http://${SERVICE_URL}"
+
+      - name: Run OWASP ZAP Baseline Scan
+        run: |
+          echo "Starting OWASP ZAP scan against ${{ env.SERVICE_URL }}"
+          docker run -v $(pwd):/zap/wrk:rw \
+            -t ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t ${{ env.SERVICE_URL }} \
+            -J zap-report.json \
+            -r zap-report.html \
+            -I
+        continue-on-error: true
+
+      - name: Upload ZAP JSON Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-json
+          path: zap-report.json
+
+      - name: Upload ZAP HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-html
+          path: zap-report.html
+
+      - name: Send ZAP Report to Splunk
+        if: always()
+        env:
+          SPLUNK_HEC_URL: ${{ secrets.SPLUNK_HEC_URL }}
+          SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
+        run: |
+          if [ -f zap-report.json ]; then
+            echo "Sending ZAP report to Splunk..."
+            curl -k "$SPLUNK_HEC_URL" \
+              -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"event\": $(cat zap-report.json), \"sourcetype\": \"owasp-zap\", \"channel\": \"dast-${GITHUB_RUN_ID}\"}"
+            echo "ZAP report sent to Splunk"
+          fi
+
+      - name: Check ZAP Results
+        run: |
+          if [ -f zap-report.json ]; then
+            HIGH_ALERTS=$(jq '.site[].alerts[] | select(.riskcode == "3") | .riskcode' zap-report.json | wc -l || echo "0")
+            MEDIUM_ALERTS=$(jq '.site[].alerts[] | select(.riskcode == "2") | .riskcode' zap-report.json | wc -l || echo "0")
+            
+            echo "DAST Scan Results:"
+            echo "High Risk Alerts: $HIGH_ALERTS"
+            echo "Medium Risk Alerts: $MEDIUM_ALERTS"
+            
+            # Only fail on high-risk alerts for demo purposes
+            if [ "$HIGH_ALERTS" -gt "0" ]; then
+              echo "❌ High-risk security issues found!"
+              exit 1
+            fi
           fi
