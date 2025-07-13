@@ -75,12 +75,12 @@ Complete DevSecOps pipeline for a Node.js application deployed on AWS EKS, with 
 - GitHub repository with configured secrets
 
 ### Required GitHub Secrets
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-DOCKERHUB_USERNAME
-DOCKERHUB_TOKEN
-SPLUNK_HEC_URL
-SPLUNK_HEC_TOKEN
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- DOCKERHUB_USERNAME
+- DOCKERHUB_TOKEN
+- SPLUNK_HEC_URL
+- SPLUNK_HEC_TOKEN
 
 ### Deployment
 1. Fork this repository
