@@ -5,7 +5,77 @@ This project demonstrates a complete end-to-end DevSecOps pipeline for a Node.js
 
 ## 🏗️ Architecture
 
-![DevSecOps Pipeline Architecture](./docs/architecture-diagram.png)
+```
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                              DevSecOps Pipeline Architecture                          │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+    Developer                   CI/CD Pipeline                    AWS Infrastructure
+        │                                                                │
+        ▼                                                                ▼
+   ┌─────────┐    ┌───────────────────────────────────┐    ┌─────────────────────┐
+   │ GitHub  │───▶│  🔒 Security Scanning at Each Stage │───▶│   🚀 EKS Cluster    │
+   └─────────┘    └───────────────────────────────────┘    └─────────────────────┘
+                            │                                           │
+                            ▼                                           ▼
+                  ┌─────────────────────┐                    ┌─────────────────────┐
+                  │ CI: Code Security   │                    │ Runtime Security    │
+                  │ • Semgrep (SAST)    │                    │ • GuardDuty         │
+                  │ • Gitleaks (Secrets)│                    │ • VPC Flow Logs     │
+                  │ • Trivy (SCA)       │                    │ • CloudWatch        │
+                  └─────────────────────┘                    └─────────────────────┘
+                            │                                           │
+                            ▼                                           ▼
+                  ┌─────────────────────┐                    ┌─────────────────────┐
+                  │ Build: Container    │                    │   Load Balancer     │
+                  │ • Trivy Image Scan  │                    │   ┌─────────────┐   │
+                  │ • Docker Security   │                    │   │ OWASP ZAP   │   │
+                  │ • Push to Registry  │                    │   │ DAST Scan   │   │
+                  └─────────────────────┘                    │   └─────────────┘   │
+                                                             └─────────────────────┘
+                                        │                               │
+                                        └───────────────────────────────┘
+                                                        ▼
+                                              ┌─────────────────────┐
+                                              │   📊 Splunk SIEM    │
+                                              │ • Centralized Logs  │
+                                              │ • Security Events   │
+                                              │ • Real-time Alerts  │
+                                              └─────────────────────┘
+```
+
+### Pipeline Flow
+
+1. **Source Control** → Developer pushes code to GitHub
+2. **CI Pipeline** → Automated security scans (SAST, Secrets, Dependencies)
+3. **Build Pipeline** → Container build and vulnerability scanning
+4. **CD Pipeline** → Deploy to EKS with runtime security checks
+5. **Monitoring** → All security events flow to Splunk SIEM
+
+### Security Controls by Stage
+
+| Stage | Security Tools | Purpose |
+|-------|---------------|---------|
+| **Code** | Semgrep, Gitleaks, Trivy | Find vulnerabilities before build |
+| **Build** | Trivy, Docker Security | Secure container images |
+| **Deploy** | Checkov, OWASP ZAP | IaC compliance & runtime testing |
+| **Runtime** | GuardDuty, CloudWatch, Splunk | Continuous threat monitoring |
+### Pipeline Flow
+
+1. **Source Control** → Developer pushes code to GitHub
+2. **CI Pipeline** → Automated security scans (SAST, Secrets, Dependencies)
+3. **Build Pipeline** → Container build and vulnerability scanning
+4. **CD Pipeline** → Deploy to EKS with runtime security checks
+5. **Monitoring** → All security events flow to Splunk SIEM
+
+### Security Controls by Stage
+
+| Stage | Security Tools | Purpose |
+|-------|---------------|---------|
+| **Code** | Semgrep, Gitleaks, Trivy | Find vulnerabilities before build |
+| **Build** | Trivy, Docker Security | Secure container images |
+| **Deploy** | Checkov, OWASP ZAP | IaC compliance & runtime testing |
+| **Runtime** | GuardDuty, CloudWatch, Splunk | Continuous threat monitoring |
 
 ### Key Components
 
