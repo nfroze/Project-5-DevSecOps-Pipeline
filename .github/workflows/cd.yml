@@ -75,11 +75,13 @@ jobs:
         run: |
           echo "Running dynamic security analysis..."
           
-          # Create reports directory
+          # Create reports directory with proper permissions
           mkdir -p zap-reports
+          chmod 777 zap-reports
           
           docker run --rm \
             -v $(pwd)/zap-reports:/zap/wrk:rw \
+            -u $(id -u):$(id -g) \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t ${{ env.APP_URL }} \
