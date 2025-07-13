@@ -4,8 +4,6 @@
 [![Build & Push](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/build.yml/badge.svg)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/build.yml)
 [![Deploy to EKS](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/cd.yml/badge.svg)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/cd.yml)
 [![Infrastructure](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/iac.yml/badge.svg)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/iac.yml)
-[![Security](https://img.shields.io/badge/security-enabled-brightgreen)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/security)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## 🎯 Overview
 Complete DevSecOps pipeline for a Node.js application deployed on AWS EKS, with security scanning integrated at every stage of the SDLC. Built to demonstrate production-ready security practices for mid-level DevSecOps roles.
