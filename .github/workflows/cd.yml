@@ -75,24 +75,28 @@ jobs:
         run: |
           echo "Running dynamic security analysis..."
           
-          # Create reports directory with proper permissions
-          mkdir -p zap-reports
-          chmod 777 zap-reports
-          
-          docker run --rm \
-            -v $(pwd)/zap-reports:/zap/wrk:rw \
-            -u $(id -u):$(id -g) \
+          # Run ZAP without volume mount to avoid permission issues
+          docker run --name zap-scan \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t ${{ env.APP_URL }} \
             -r zap-report.html \
             -w zap-report.md \
+            -J zap-report.json \
             -I || true
           
+          # Copy reports from container
+          docker cp zap-scan:/zap/wrk/zap-report.html . || true
+          docker cp zap-scan:/zap/wrk/zap-report.md . || true
+          docker cp zap-scan:/zap/wrk/zap-report.json . || true
+          
+          # Cleanup
+          docker rm zap-scan || true
+          
           # Display summary
-          if [ -f zap-reports/zap-report.md ]; then
+          if [ -f zap-report.md ]; then
             echo "### DAST Scan Summary"
-            head -n 20 zap-reports/zap-report.md || true
+            head -n 20 zap-report.md || true
           fi
 
       - name: 📊 Upload Security Reports
@@ -100,7 +104,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dast-security-report
-          path: zap-reports/zap-report.*
+          path: zap-report.*
 
       - name: ✅ Deployment Summary
         if: always()
