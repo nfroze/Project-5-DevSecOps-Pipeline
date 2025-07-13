@@ -53,6 +53,7 @@ jobs:
             LB_URL=$(kubectl get svc project5-service -n project5 -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
             if [ -n "$LB_URL" ]; then
               echo "APP_URL=http://${LB_URL}" >> $GITHUB_ENV
+              echo "url=http://${LB_URL}" >> $GITHUB_OUTPUT
               echo "✅ Application accessible at: http://${LB_URL}"
               break
             fi
@@ -72,39 +73,11 @@ jobs:
           done
 
       - name: 🛡️ DAST Security Scan (OWASP ZAP)
-        run: |
-          echo "Running dynamic security analysis..."
-          
-          # Run ZAP without volume mount to avoid permission issues
-          docker run --name zap-scan \
-            -t ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py \
-            -t ${{ env.APP_URL }} \
-            -r zap-report.html \
-            -w zap-report.md \
-            -J zap-report.json \
-            -I || true
-          
-          # Copy reports from container
-          docker cp zap-scan:/zap/wrk/zap-report.html . || true
-          docker cp zap-scan:/zap/wrk/zap-report.md . || true
-          docker cp zap-scan:/zap/wrk/zap-report.json . || true
-          
-          # Cleanup
-          docker rm zap-scan || true
-          
-          # Display summary
-          if [ -f zap-report.md ]; then
-            echo "### DAST Scan Summary"
-            head -n 20 zap-report.md || true
-          fi
-
-      - name: 📊 Upload Security Reports
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: zaproxy/action-baseline@v0.11.0
         with:
-          name: dast-security-report
-          path: zap-report.*
+          target: ${{ steps.get-url.outputs.url }}
+          cmd_options: '-I'
+          allow_issue_writing: false
 
       - name: ✅ Deployment Summary
         if: always()
@@ -112,6 +85,6 @@ jobs:
           echo "### Deployment Complete! 🎉"
           echo "- **Application URL**: ${{ env.APP_URL }}"
           echo "- **Container Image**: nfroze/project5-app:${{ github.sha }}"
-          echo "- **Security Scans**: Completed ✅"
+          echo "- **Security Scans**: Completed"
           echo ""
           echo "AWS GuardDuty and CloudWatch are now monitoring this deployment."
