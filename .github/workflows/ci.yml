@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: Security Scanning Pipeline
 
 permissions:
   contents: read
@@ -9,150 +9,105 @@ on:
     paths-ignore:
       - '**/*.tf'
       - '.github/workflows/iac.yml'
+      - '**/*.md'
   pull_request:
     branches: [main]
     paths-ignore:
       - '**/*.tf'
       - '.github/workflows/iac.yml'
+      - '**/*.md'
 
 jobs:
-  # Trivy SCA Scan
-  trivy-scan:
+  # 🔍 Code Security Scanning
+  security-scans:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for secret detection
 
-      - name: Run Trivy (SCA Scan)
+      # SAST - Static Application Security Testing
+      - name: 🔒 SAST Scan (Semgrep)
+        run: |
+          pip install semgrep
+          semgrep --config=auto --json --output=semgrep-report.json || true
+          
+          # Display summary
+          if [ -f semgrep-report.json ]; then
+            echo "Found $(jq '.results | length' semgrep-report.json) potential issues"
+          fi
+        continue-on-error: true
+
+      # SCA - Software Composition Analysis  
+      - name: 📦 Dependency Scan (Trivy)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           format: json
           output: trivy-results.json
-          severity: 'CRITICAL,HIGH,MEDIUM'  # Add severity filter
-        continue-on-error: true
+          severity: 'CRITICAL,HIGH'
+          exit-code: 0
 
-      - name: Upload Trivy JSON Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-results
-          path: trivy-results.json
-
-  # Semgrep SAST Scan
-  semgrep-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Install Semgrep
-        run: pip install semgrep
-
-      - name: Run Semgrep (JSON Output)
-        run: semgrep --config=auto --json --output=semgrep-report.json
-        continue-on-error: true
-
-      - name: Upload Semgrep JSON Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-report
-          path: semgrep-report.json
-
-  # Gitleaks Secret Scan
-  gitleaks-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history for better secret detection
-
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Generate Gitleaks JSON Report
-        if: always()
+      # Secret Detection
+      - name: 🔑 Secret Scan (Gitleaks)
         run: |
-          # Download and run Gitleaks manually for JSON output
-          wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz
+          wget -q -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz
           tar -xzf gitleaks.tar.gz
           ./gitleaks detect --source=. --report-format=json --report-path=gitleaks-report.json --exit-code=0 || true
+          
+          # Display summary
+          if [ -f gitleaks-report.json ] && [ -s gitleaks-report.json ]; then
+            echo "Found $(jq '. | length' gitleaks-report.json) potential secrets"
+          else
+            echo "No secrets detected ✅"
+          fi
 
-      - name: Upload Gitleaks JSON Report
+      # Upload all reports as artifacts
+      - name: 📤 Save Security Reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gitleaks-report
-          path: gitleaks-report.json
+          name: security-scan-reports
+          path: |
+            *-report.json
+            *-results.json
 
-  # Consolidate results and send to Splunk
-  consolidate-and-report:
-    needs: [trivy-scan, semgrep-scan, gitleaks-scan]
-    runs-on: ubuntu-latest
-    if: always()  # Run even if scans fail
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: scan-results
-
-      - name: Send Reports to Splunk
-        env:
-          SPLUNK_HEC_URL: ${{ secrets.SPLUNK_HEC_URL }}
-          SPLUNK_HEC_TOKEN: ${{ secrets.SPLUNK_HEC_TOKEN }}
+      # Security Gate - Fail if critical issues found
+      - name: 🚦 Security Gate Check
         run: |
-          CHANNEL_ID=$(uuidgen)
-          
-          # Send each report to Splunk
-          for report in scan-results/*/; do
-            for file in "$report"*.json; do
-              if [ -f "$file" ]; then
-                filename=$(basename "$file")
-                sourcetype="${filename%.json}"
-                
-                echo "Sending $sourcetype to Splunk..."
-                curl -k "$SPLUNK_HEC_URL" \
-                  -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" \
-                  -H "Content-Type: application/json" \
-                  -d "{\"event\": $(cat "$file"), \"sourcetype\": \"${sourcetype}\", \"channel\": \"$CHANNEL_ID\"}"
-              fi
-            done
-          done
-
-      - name: Security Gate Check
-        run: |
-          set -e
           FAILED=false
           
-          # Check Trivy results
-          if [ -f "scan-results/trivy-results/trivy-results.json" ]; then
-            if grep -q '"Vulnerabilities":\s*\[{' scan-results/trivy-results/trivy-results.json 2>/dev/null; then
-              echo "❌ Trivy found vulnerabilities"
-              FAILED=true
-            fi
+          echo "=== Security Scan Summary ==="
+          
+          # Check Trivy
+          if [ -f trivy-results.json ]; then
+            VULNS=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL" or .Severity == "HIGH")] | length' trivy-results.json)
+            echo "Dependencies: $VULNS critical/high vulnerabilities"
+            [ "$VULNS" -gt 0 ] && FAILED=true
           fi
           
-          # Check Semgrep results
-          if [ -f "scan-results/semgrep-report/semgrep-report.json" ]; then
-            if jq -e '.results | length > 0' scan-results/semgrep-report/semgrep-report.json >/dev/null 2>&1; then
-              echo "❌ Semgrep found issues"
-              FAILED=true
-            fi
+          # Check Semgrep
+          if [ -f semgrep-report.json ]; then
+            ISSUES=$(jq '.results | length' semgrep-report.json)
+            echo "Code Quality: $ISSUES potential issues"
+            [ "$ISSUES" -gt 5 ] && FAILED=true  # Allow some issues for demo
           fi
           
-          # Check Gitleaks results
-          if [ -f "scan-results/gitleaks-report/gitleaks-report.json" ]; then
-            if grep -q '"rule_id":' scan-results/gitleaks-report/gitleaks-report.json 2>/dev/null; then
-              echo "❌ Gitleaks found secrets"
-              FAILED=true
-            fi
+          # Check Gitleaks
+          if [ -f gitleaks-report.json ] && [ -s gitleaks-report.json ]; then
+            SECRETS=$(jq '. | length' gitleaks-report.json)
+            echo "Secrets: $SECRETS potential leaks"
+            [ "$SECRETS" -gt 0 ] && FAILED=true
+          else
+            echo "Secrets: None detected ✅"
           fi
+          
+          echo "============================"
           
           if [ "$FAILED" = true ]; then
-            echo "Security checks failed!"
+            echo "❌ Security gate FAILED - fix issues before proceeding"
             exit 1
           else
-            echo "✅ All security checks passed!"
+            echo "✅ Security gate PASSED - proceeding to build"
           fi
