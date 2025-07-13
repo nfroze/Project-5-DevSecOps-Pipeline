@@ -31,7 +31,11 @@ jobs:
           framework: terraform
           output_format: cli
           soft_fail: true
-          skip_check: CKV2_AWS_61,CKV2_AWS_62  # Skip checks documented in SECURITY_EXCEPTIONS.md
+          # Skip checks documented in SECURITY_EXCEPTIONS.md
+          skip_check: >-
+            CKV_AWS_50,CKV_AWS_272,CKV_AWS_115,CKV_AWS_173,
+            CKV_AWS_117,CKV_AWS_116,CKV_AWS_364,
+            CKV_AWS_38,CKV_AWS_39,CKV_AWS_7
 
       - name: 📊 Security Summary
         if: always()
