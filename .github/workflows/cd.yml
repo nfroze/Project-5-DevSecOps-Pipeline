@@ -75,8 +75,11 @@ jobs:
         run: |
           echo "Running dynamic security analysis..."
           
+          # Create reports directory
+          mkdir -p zap-reports
+          
           docker run --rm \
-            -v $(pwd):/zap/wrk:rw \
+            -v $(pwd)/zap-reports:/zap/wrk:rw \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t ${{ env.APP_URL }} \
@@ -85,9 +88,9 @@ jobs:
             -I || true
           
           # Display summary
-          if [ -f zap-report.md ]; then
+          if [ -f zap-reports/zap-report.md ]; then
             echo "### DAST Scan Summary"
-            head -n 20 zap-report.md || true
+            head -n 20 zap-reports/zap-report.md || true
           fi
 
       - name: 📊 Upload Security Reports
@@ -95,7 +98,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dast-security-report
-          path: zap-report.*
+          path: zap-reports/zap-report.*
 
       - name: ✅ Deployment Summary
         if: always()
