@@ -102,6 +102,10 @@ Complete DevSecOps pipeline for a Node.js application deployed on AWS EKS, with 
 - Container security contexts enforced
 - Centralized logging for incident response
 
+**Security Governance**
+- 📋 [Security Policy](SECURITY.md) - How we handle vulnerabilities
+- 📋 [Security Exceptions](SECURITY_EXCEPTIONS.md) - Documented risk decisions
+
 ## 📚 Tech Stack
 
 - **Cloud**: AWS (EKS, VPC, IAM, ALB)
