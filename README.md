@@ -6,7 +6,7 @@
 [![Infrastructure](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/iac.yml/badge.svg)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/iac.yml)
 
 ## 🎯 Overview
-Complete DevSecOps pipeline for a Node.js application deployed on AWS EKS, with security scanning integrated at every stage of the SDLC. Built to demonstrate production-ready security practices for mid-level DevSecOps roles.
+Complete DevSecOps pipeline for a Node.js application deployed on AWS EKS, with security scanning integrated at every stage of the SDLC. **100% of AWS infrastructure provisioned through Terraform** with enterprise SIEM integration via Splunk. Built to demonstrate production-ready security practices for mid-level DevSecOps roles.
 
 ## 📸 Live Demo Screenshots
 
