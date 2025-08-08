@@ -1,4 +1,4 @@
-# 📦 Project 5: End-to-End DevSecOps Transformation
+# 📦 Project 5: DevSecOps Pipeline
 
 [![CI Pipeline](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/ci.yml/badge.svg)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/ci.yml)
 [![Build & Push](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/build.yml/badge.svg)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/build.yml)
