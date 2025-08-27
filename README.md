@@ -82,10 +82,10 @@ Security pipeline for Node.js application deployed to Amazon EKS. Automated secu
 
 ## Screenshots
 
-1. GitHub Actions pipeline with security checks
-2. AWS EKS cluster running
-3. Deployed application with load balancer
-4. Splunk security dashboard
+- [GitHub Actions pipeline with security checks](docs/screenshots/github-actions-all-green.png)
+- [AWS EKS cluster running](docs/screenshots/aws-eks-cluster.png)
+- [Deployed application with load balancer](docs/screenshots/running-application.png)
+- [Splunk security dashboard](docs/screenshots/splunk-dashboard.png)
 
 ## Project Structure
 
