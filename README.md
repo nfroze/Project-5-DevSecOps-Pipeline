@@ -1,76 +1,44 @@
-# 📦 Project 5: DevSecOps Pipeline
+# Project 5: DevSecOps Pipeline
 
-[![CI Pipeline](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/ci.yml/badge.svg)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/ci.yml)
-[![Build & Push](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/build.yml/badge.svg)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/build.yml)
-[![Deploy to EKS](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/cd.yml/badge.svg)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/cd.yml)
-[![Infrastructure](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/iac.yml/badge.svg)](https://github.com/nfroze/Project-5-End-to-End-DevSecOps-Transformation/actions/workflows/iac.yml)
+## Overview
 
-## 🎯 Overview
-Complete DevSecOps pipeline for a Node.js application deployed on AWS EKS, with security scanning integrated at every stage of the SDLC. **100% of AWS infrastructure provisioned through Terraform** with enterprise SIEM integration via Splunk. Built to demonstrate production-ready security practices for mid-level DevSecOps roles.
+Security pipeline for Node.js application deployed to Amazon EKS. Automated security scanning integrated throughout CI/CD pipeline. AWS infrastructure provisioned through Terraform. Splunk SIEM integration for security monitoring.
 
-## 📸 Live Demo Screenshots
-
-### CI/CD Pipeline - All Systems Green
-![GitHub Actions Pipeline](docs/screenshots/github-actions-all-green.png)
-*All security checks passing - SAST, SCA, container scanning, and deployment*
-
-### AWS EKS Cluster Running
-![EKS Cluster](docs/screenshots/aws-eks-cluster.png)
-*Production-grade Kubernetes cluster with security controls*
-
-### Application Live
-![Running Application](docs/screenshots/running-application.png)
-*Deployed application with load balancer endpoint*
-
-### Splunk Security Dashboard
-![Splunk Dashboard](docs/screenshots/splunk-dashboard.png)
-*Real-time security monitoring and alerting*
-
-## 📝 What This Demonstrates
-
-- **DevSecOps Implementation**: Security integrated at every pipeline stage
-- **Cloud Security**: AWS best practices with VPC isolation, IAM, and GuardDuty
-- **Container Security**: Image scanning, non-root users, read-only filesystems
-- **Automation**: Fully automated security scanning and deployment
-- **Monitoring**: Centralized security events with Splunk SIEM
-
-## 🏗️ Architecture
+## Architecture
 
 ### Pipeline Flow
-1. **Push** → Code pushed to GitHub
-2. **Scan** → Automated security checks (SAST, secrets, dependencies)
-3. **Build** → Container built and scanned for vulnerabilities
-4. **Deploy** → Automated deployment to EKS
-5. **Monitor** → All events logged to Splunk SIEM
+1. Code pushed to GitHub
+2. Security scanning (SAST, secrets, dependencies)
+3. Container built and scanned
+4. Deployment to EKS
+5. Security events logged to Splunk
 
-### Key Components
+### Security Toolchain
+- SAST: Semgrep for code vulnerabilities
+- Secrets: Gitleaks for credential scanning
+- SCA: Trivy for dependency vulnerabilities
+- Container: Trivy for image scanning
+- DAST: OWASP ZAP for runtime testing
+- IaC: Checkov for Terraform compliance
 
-**Security Toolchain**
-- **SAST**: Semgrep for code vulnerability detection
-- **Secrets**: Gitleaks for credential scanning
-- **SCA**: Trivy for dependency vulnerabilities
-- **Container**: Trivy for Docker image scanning
-- **DAST**: OWASP ZAP for runtime testing
-- **IaC**: Checkov for Terraform compliance
+### AWS Infrastructure
+- EKS: Kubernetes cluster in private subnets
+- Networking: VPC with public/private subnets
+- Load Balancing: ALB for ingress
+- Security: GuardDuty, CloudWatch, VPC Flow Logs
 
-**AWS Infrastructure**
-- **EKS**: Kubernetes cluster in private subnets
-- **Networking**: VPC with public/private isolation
-- **Load Balancing**: ALB for ingress
-- **Security**: GuardDuty, CloudWatch, VPC Flow Logs
+### Observability
+- SIEM: Splunk for security event aggregation
+- Monitoring: CloudWatch for infrastructure metrics
+- Alerting: Splunk webhook integration
 
-**Observability**
-- **SIEM**: Splunk for security event aggregation
-- **Monitoring**: CloudWatch for infrastructure metrics
-- **Alerting**: Splunk to Slack webhook integration
-
-## 🚀 Quick Start
+## Implementation
 
 ### Prerequisites
 - AWS Account with EKS permissions
 - Docker Hub account
 - Splunk instance with HEC token
-- GitHub repository with configured secrets
+- GitHub repository with secrets
 
 ### Required GitHub Secrets
 - AWS_ACCESS_KEY_ID
@@ -80,46 +48,58 @@ Complete DevSecOps pipeline for a Node.js application deployed on AWS EKS, with 
 - SPLUNK_HEC_URL
 - SPLUNK_HEC_TOKEN
 
-### Deployment
-1. Fork this repository
-2. Add the required secrets to GitHub
-3. Update Terraform backend config
-4. Push to main to trigger pipeline
+### Deployment Steps
+1. Fork repository
+2. Add required secrets to GitHub
+3. Update Terraform backend configuration
+4. Push to main branch
 
-## 🔒 Security Implementation
+## Security Features
 
-**Shift-Left Security**
-- Pre-commit: Gitleaks hooks for secrets
+### Shift-Left Security
+- Pre-commit: Gitleaks hooks
 - CI Stage: SAST and dependency scanning
-- Build Stage: Container vulnerability scanning
+- Build Stage: Container scanning
 - Deploy Stage: IaC compliance checks
-- Runtime: DAST and continuous monitoring
+- Runtime: DAST and monitoring
 
-**Defense in Depth**
+### Defense in Depth
 - Network isolation with Kubernetes policies
-- RBAC with least privilege access
-- Immutable infrastructure via IaC
-- Container security contexts enforced
-- Centralized logging for incident response
+- RBAC with least privilege
+- Infrastructure as Code
+- Container security contexts
+- Centralised logging
 
-**Security Governance**
-- 📋 [Security Policy](SECURITY.md) - How we handle vulnerabilities
-- 📋 [Security Exceptions](SECURITY_EXCEPTIONS.md) - Documented risk decisions
+## Technologies
 
-## 📚 Tech Stack
+- Cloud: AWS (EKS, VPC, IAM, ALB)
+- IaC: Terraform
+- Containers: Docker, Kubernetes
+- CI/CD: GitHub Actions
+- Security: Trivy, Semgrep, Gitleaks, OWASP ZAP, Checkov
+- Monitoring: Splunk, CloudWatch
+- Application: Node.js
 
-- **Cloud**: AWS (EKS, VPC, IAM, ALB)
-- **IaC**: Terraform
-- **Containers**: Docker, Kubernetes
-- **CI/CD**: GitHub Actions
-- **Security**: Trivy, Semgrep, Gitleaks, OWASP ZAP, Checkov
-- **Monitoring**: Splunk, CloudWatch
-- **Language**: Node.js
+## Screenshots
 
-## 🏆 Results
+1. GitHub Actions pipeline with security checks
+2. AWS EKS cluster running
+3. Deployed application with load balancer
+4. Splunk security dashboard
 
-- ✅ Automated security scanning catches vulnerabilities before production
-- ✅ Full compliance with container and cloud security best practices
-- ✅ Zero manual security checks - everything automated
-- ✅ Complete audit trail in Splunk for compliance
-- ✅ Sub-5 minute deployment with full security validation
+## Project Structure
+
+```
+Project-5-DevSecOps-Pipeline/
+├── .github/workflows/    # CI/CD pipelines
+├── terraform/            # Infrastructure code
+├── k8s/                  # Kubernetes manifests
+├── app/                  # Node.js application
+├── docs/                 # Documentation
+└── lambda/               # GuardDuty to Splunk integration
+```
+
+## Documentation
+
+- Security Policy: Vulnerability handling procedures
+- Security Exceptions: Documented risk decisions
