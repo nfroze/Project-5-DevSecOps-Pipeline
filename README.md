@@ -8,7 +8,11 @@ AWS EKS • Terraform • GitHub Actions • Docker • Kubernetes • Semgrep �
 
 ## Screenshots
 
-- [GitHub Actions pipeline](docs/screenshots/github-actions-all-green.png)
-- [EKS cluster running](docs/screenshots/aws-eks-cluster.png)
-- [Deployed application](docs/screenshots/running-application.png)
-- [Splunk dashboard](docs/screenshots/splunk-dashboard.png)
+- [GitHub Actions pipeline](screenshots/github-actions-all-green.png)
+- [EKS cluster running](screenshots/aws-eks-cluster.png)
+- [Deployed application](screenshots/running-application.png)
+- [Splunk dashboard](screenshots/splunk-dashboard.png)
+
+## Documents
+
+- [Security exceptions](documents/SECURITY_EXCEPTIONS.md)
